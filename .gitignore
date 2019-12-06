@@ -117,3 +117,4 @@ pip-selfcheck.json
 # End of https://www.gitignore.io/api/venv,pycharm,virtualenv
 
 .idea/
+tb_logs/
