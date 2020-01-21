@@ -12,12 +12,19 @@ register(
     id='BRP-v0',
     entry_point='gym_control.envs:BioReactor',
     max_episode_steps=200,
-    reward_threshold=50.0,
+    reward_threshold=70.0,
 )
 
 register(
     id='BRPAtt-v0',
     entry_point='gym_control.envs:BioReactorAttacker',
     max_episode_steps=200,
-    reward_threshold=90.0,
+    reward_threshold=20,
+)
+
+register(
+    id='BRPDef-v0',
+    entry_point='gym_control.envs:BioReactorDefender',
+    max_episode_steps=200,
+    reward_threshold=60.0,
 )
