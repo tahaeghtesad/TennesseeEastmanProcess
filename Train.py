@@ -1,5 +1,4 @@
 from trainer import Trainer
-from datetime import datetime
 import logging
 import numpy as np
 import sys

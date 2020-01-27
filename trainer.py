@@ -79,16 +79,17 @@ class Trainer:
         )
 
         for i in range(len(defender_choice)):
-            env = gym.make('BRPAtt-v0',
-                           defender=DDPGWrapper.load(f'params/defender-{i}'),
-                           mode=AttackerMode.Actuation,
-                           range=np.float(0.3))
+            if defender_choice[i] != 0.0:
+                env = gym.make('BRPAtt-v0',
+                               defender=DDPGWrapper.load(f'params/defender-{i}'),
+                               mode=AttackerMode.Actuation,
+                               range=np.float(0.3))
 
-            model.set_env(env)
+                model.set_env(env)
 
-            model.learn(total_timesteps=round(defender_choice[i] * TOTAL_TRAINING_STEPS),
-                        callback=callback,
-                        tb_log_name=f'Attacker')
+                model.learn(total_timesteps=round(defender_choice[i] * TOTAL_TRAINING_STEPS),
+                            callback=callback,
+                            tb_log_name=f'Attacker')
 
         model.save(f'params/attacker-{len(attacker_choice)}')
 
@@ -110,14 +111,15 @@ class Trainer:
         )
 
         for i in range(len(attacker_choice)):
-            env = gym.make('BRPDef-v0',
-                           attacker=DDPGWrapper.load(f'params/attacker-{i}'))
+            if attacker_choice[i] != 0.0:
+                env = gym.make('BRPDef-v0',
+                               attacker=DDPGWrapper.load(f'params/attacker-{i}'))
 
-            model.set_env(env)
+                model.set_env(env)
 
-            model.learn(total_timesteps=round(attacker_choice[i] * TOTAL_TRAINING_STEPS),
-                        callback=callback,
-                        tb_log_name=f'Defender')
+                model.learn(total_timesteps=round(attacker_choice[i] * TOTAL_TRAINING_STEPS),
+                            callback=callback,
+                            tb_log_name=f'Defender')
 
         model.save(f'params/defender-{len(defender_choice)}')
 
