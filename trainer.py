@@ -13,8 +13,6 @@ from tqdm import tqdm
 from os import listdir
 from os.path import isfile, join
 
-TOTAL_TRAINING_STEPS = 500 * 1000
-
 def callback(locals_, globals_):
     self_ = locals_['self']
 
@@ -56,13 +54,15 @@ class CustomPolicy(LnMlpPolicy):
 
 class Trainer:
 
-    def __init__(self):
+    def __init__(self, total_training_steps):
         # Columns are attackers, rows are defenders
         self.attacker_payoff_table = np.array([[]])
         self.defender_payoff_table = np.array([[]])
 
         if isfile('attacker_payoff.npy') and isfile('defender_payoff.npy'):
             self.load_tables()
+
+        self.total_training_steps = total_training_steps
 
     def train_attacker(self, attacker_choice, defender_choice):  # TODO propose new name for defender_choice!
         model = DDPG(
@@ -71,7 +71,7 @@ class Trainer:
                      defender=None,
                      mode=AttackerMode.Actuation,
                      range=np.float(0.3)),  # This is a dummy env
-            verbose=2,
+            verbose=1,
             random_exploration=.1,
             gamma=.95,
             full_tensorboard_log=True,
@@ -87,13 +87,15 @@ class Trainer:
 
                 model.set_env(env)
 
-                model.learn(total_timesteps=round(defender_choice[i] * TOTAL_TRAINING_STEPS),
+                model.learn(total_timesteps=round(defender_choice[i] * self.total_training_steps),
                             callback=callback,
                             tb_log_name=f'Attacker')
 
         model.save(f'params/attacker-{len(attacker_choice)}')
 
-        attacker_util, defender_util = self.get_attacker_payoff(f'attacker-{len(attacker_choice)}')
+        return f'attacker-{len(attacker_choice)}'
+
+    def update_attacker_payoff_table(self, attacker_util, defender_util):
         self.attacker_payoff_table = np.hstack([self.attacker_payoff_table, attacker_util.reshape((attacker_util.size, 1))])
         self.defender_payoff_table = np.hstack([self.defender_payoff_table, defender_util.reshape((defender_util.size, 1))])
         self.save_tables()
@@ -103,7 +105,7 @@ class Trainer:
             CustomPolicy,
             gym.make('BRPDef-v0',
                      attacker=None),  # This is a dummy env
-            verbose=2,
+            verbose=1,
             random_exploration=.1,
             gamma=.95,
             full_tensorboard_log=True,
@@ -117,13 +119,15 @@ class Trainer:
 
                 model.set_env(env)
 
-                model.learn(total_timesteps=round(attacker_choice[i] * TOTAL_TRAINING_STEPS),
+                model.learn(total_timesteps=round(attacker_choice[i] * self.total_training_steps),
                             callback=callback,
                             tb_log_name=f'Defender')
 
         model.save(f'params/defender-{len(defender_choice)}')
 
-        attacker_util, defender_util = self.get_defender_payoff(f'defender-{len(defender_choice)}')
+        return f'defender-{len(defender_choice)}'
+
+    def update_defender_payoff_table(self, attacker_util, defender_util):
         self.attacker_payoff_table = np.vstack([self.attacker_payoff_table, attacker_util.reshape((1, attacker_util.size))])
         self.defender_payoff_table = np.vstack([self.defender_payoff_table, defender_util.reshape((1, defender_util.size))])
         self.save_tables()
@@ -132,14 +136,14 @@ class Trainer:
         model = DDPG(
             CustomPolicy,
             env=gym.make('BRP-v0'),
-            verbose=2,
+            verbose=1,
             random_exploration=0.1,
             gamma=0.9,
             full_tensorboard_log=True,
             tensorboard_log='tb_logs'
         )
 
-        model.learn(TOTAL_TRAINING_STEPS,
+        model.learn(self.total_training_steps,
                     callback=callback,
                     tb_log_name='Defender')
 
@@ -152,14 +156,14 @@ class Trainer:
                          defender=DDPGWrapper.load(f'params/defender-0'),
                          mode=AttackerMode.Actuation,
                          range=np.float(0.3)),
-            verbose=2,
+            verbose=1,
             random_exploration=0.1,
             gamma=0.9,
             full_tensorboard_log=True,
             tensorboard_log='tb_logs'
         )
 
-        model.learn(TOTAL_TRAINING_STEPS,
+        model.learn(self.total_training_steps,
                     callback=callback,
                     tb_log_name='Attacker')
 
@@ -242,3 +246,19 @@ class Trainer:
             defender_utilities.append(d_u)
 
         return np.array(attacker_utilities), np.array(defender_utilities)
+
+    def evaluate_mixed_payoff_defender(self):
+        ae, de = self.solve_equilibrium()
+        return (np.outer(de, ae.transpose()) * self.defender_payoff_table).sum()
+
+    def evaluate_mixed_payoff_attacker(self):  # This is for the defender
+        ae, de = self.solve_equilibrium()
+        return (np.outer(de, ae.transpose()) * self.attacker_payoff_table).sum()
+
+    def evaluate_new_defender_mixed_attacker(self, defender_utilities):
+        ae, de = self.solve_equilibrium()
+        return (ae * defender_utilities).sum()
+
+    def evaluate_new_attacker_mixed_defender(self, attacker_utilities):
+        ae, de = self.solve_equilibrium()
+        return (de * attacker_utilities).sum()
