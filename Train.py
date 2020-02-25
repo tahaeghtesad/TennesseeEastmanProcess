@@ -30,6 +30,7 @@ if __name__ == '__main__':
     trainer.attacker_payoff_table = np.array([[au]])
     trainer.defender_payoff_table = np.array([[du]])
 
+    rootLogger.info(f'Initial payoff table: {trainer.attacker_payoff_table, trainer.defender_payoff_table}')
 
     try:
         while True:
@@ -42,7 +43,9 @@ if __name__ == '__main__':
 
             au, du = trainer.get_defender_payoff(defender)
             ndu = trainer.evaluate_new_defender_mixed_attacker(du)  # New_Defender_Mixed_Utility
-            mdu = trainer.evaluate_mixed_payoff_defender()  # Mixed_Defender_Utility
+            _, mdu = trainer.get_mixed_payoff()  # Mixed_Defender_Utility
+            rootLogger.info(f'Mixed Defender Utility: {mdu}')
+            rootLogger.info(f'New Defender Utility Vs. Mixed Attacker Equilibrium: {ndu}')
             rootLogger.info(f'Defender Improvement: {(1 - (ndu / mdu)) * 100:.2f}%')
             trainer.update_defender_payoff_table(au, du)
 
@@ -55,7 +58,9 @@ if __name__ == '__main__':
 
             au, du = trainer.get_attacker_payoff(attacker)
             nau = trainer.evaluate_new_attacker_mixed_defender(au)
-            mau = trainer.evaluate_mixed_payoff_attacker()
+            mau, _ = trainer.get_mixed_payoff()
+            rootLogger.info(f'Mixed Attacker Utility: {mau}')
+            rootLogger.info(f'New Attacker Utility Vs. Mixed Defender Equilibrium: {nau}')
             rootLogger.info(f'Attacker Improvement: {(1 - (nau / mau)) * 100:.2f}%')
             trainer.update_attacker_payoff_table(au, du)
 

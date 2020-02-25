@@ -12,11 +12,13 @@ import nashpy as nash
 from tqdm import tqdm
 from os import listdir
 from os.path import isfile, join
+from scipy import optimize as op
+
 
 def callback(locals_, globals_):
     self_ = locals_['self']
 
-    if 'info' in locals_:
+    if 'info' in locals_ and 'writer' in locals_ and locals_['writer'] is not None:
 
         for i in range(2):
             summary = tf.Summary(
@@ -74,8 +76,8 @@ class Trainer:
             verbose=1,
             random_exploration=.1,
             gamma=.95,
-            full_tensorboard_log=True,
-            tensorboard_log='tb_logs'
+            # full_tensorboard_log=True,
+            # tensorboard_log='tb_logs'
         )
 
         for i in range(len(defender_choice)):
@@ -89,7 +91,8 @@ class Trainer:
 
                 model.learn(total_timesteps=round(defender_choice[i] * self.total_training_steps),
                             callback=callback,
-                            tb_log_name=f'Attacker')
+                            # tb_log_name=f'Attacker'
+                            )
 
         model.save(f'params/attacker-{len(attacker_choice)}')
 
@@ -108,8 +111,8 @@ class Trainer:
             verbose=1,
             random_exploration=.1,
             gamma=.95,
-            full_tensorboard_log=True,
-            tensorboard_log='tb_logs'
+            # full_tensorboard_log=True,
+            # tensorboard_log='tb_logs'
         )
 
         for i in range(len(attacker_choice)):
@@ -121,7 +124,8 @@ class Trainer:
 
                 model.learn(total_timesteps=round(attacker_choice[i] * self.total_training_steps),
                             callback=callback,
-                            tb_log_name=f'Defender')
+                            # tb_log_name=f'Defender'
+                            )
 
         model.save(f'params/defender-{len(defender_choice)}')
 
@@ -139,13 +143,14 @@ class Trainer:
             verbose=1,
             random_exploration=0.1,
             gamma=0.9,
-            full_tensorboard_log=True,
-            tensorboard_log='tb_logs'
+            # full_tensorboard_log=True,
+            # tensorboard_log='tb_logs'
         )
 
         model.learn(self.total_training_steps,
                     callback=callback,
-                    tb_log_name='Defender')
+                    # tb_log_name='Defender'
+                    )
 
         model.save('params/defender-0')
 
@@ -159,13 +164,14 @@ class Trainer:
             verbose=1,
             random_exploration=0.1,
             gamma=0.9,
-            full_tensorboard_log=True,
-            tensorboard_log='tb_logs'
+            # full_tensorboard_log=True,
+            # tensorboard_log='tb_logs'
         )
 
         model.learn(self.total_training_steps,
                     callback=callback,
-                    tb_log_name='Attacker')
+                    # tb_log_name='Attacker'
+                    )
 
         model.save('params/attacker-0')
 
@@ -185,8 +191,14 @@ class Trainer:
             return a, d
 
         game = nash.Game(self.attacker_payoff_table, self.defender_payoff_table)
-        equilibrium = game.lemke_howson(initial_dropped_label=0)
+        equilibrium = game.lemke_howson(initial_dropped_label=10000)
         return equilibrium[1], equilibrium[0]
+
+    # def solve_equilibrium(self):
+    #     assert (self.defender_payoff_table == -self.attacker_payoff_table).all()
+    #     assert self.defender_payoff_table.shape[0] == self.defender_payoff_table.shape[1]
+    #     ae, de, _ = self.find_zero_sum_mixed_ne(self.defender_payoff_table)
+    #     return ae, de
 
     def save_tables(self):
         np.save('attacker_payoff', self.attacker_payoff_table)
@@ -247,18 +259,44 @@ class Trainer:
 
         return np.array(attacker_utilities), np.array(defender_utilities)
 
-    def evaluate_mixed_payoff_defender(self):
+    def get_mixed_payoff(self):
         ae, de = self.solve_equilibrium()
-        return (np.outer(de, ae.transpose()) * self.defender_payoff_table).sum()
-
-    def evaluate_mixed_payoff_attacker(self):  # This is for the defender
-        ae, de = self.solve_equilibrium()
-        return (np.outer(de, ae.transpose()) * self.attacker_payoff_table).sum()
+        return ((np.outer(de, ae) * self.attacker_payoff_table).sum(),  # Attacker mixed payoff
+                (np.outer(de, ae) * self.defender_payoff_table).sum())  # Defender mixed payoff
 
     def evaluate_new_defender_mixed_attacker(self, defender_utilities):
-        ae, de = self.solve_equilibrium()
+        ae, _ = self.solve_equilibrium()
         return (ae * defender_utilities).sum()
 
     def evaluate_new_attacker_mixed_defender(self, attacker_utilities):
-        ae, de = self.solve_equilibrium()
+        _, de = self.solve_equilibrium()
         return (de * attacker_utilities).sum()
+
+    @staticmethod
+    def find_zero_sum_mixed_ne(payoff):
+        """
+        Function for returning mixed strategies of the first step of double oracle iterations.
+        :param payoff: Two dimensinal array. Payoff matrix of the players.
+        The row is defender and column is attcker. This is the payoff for row player.
+        :return: List, mixed strategy of the attacker and defender at NE by solving maxmini problem.
+        """
+        # This implementation is based on page 88 of the book multiagent systems (Shoham etc.)
+        # http://www.masfoundations.org/mas.pdf
+        n_action = payoff.shape[0]
+        c = np.zeros(n_action)
+        c = np.append(c, 1)
+        A_ub = np.concatenate((payoff, np.full((n_action, 1), -1)), axis=1)
+        b_ub = np.zeros(n_action)
+        A_eq = np.full(n_action, 1)
+        A_eq = np.append(A_eq, 0)
+        A_eq = np.expand_dims(A_eq, axis=0)
+        b_eq = np.ones(1)
+        bound = ()
+        for i in range(n_action):
+            bound += ((0, None),)
+        bound += ((None, None),)
+        res_attacker = op.linprog(c, A_ub, b_ub, A_eq, b_eq, bounds=bound)
+        c = -c
+        A_ub = np.concatenate((-payoff.T, np.full((n_action, 1), 1)), axis=1)
+        res_defender = op.linprog(c, A_ub, b_ub, A_eq, b_eq, bounds=bound)
+        return res_attacker.x[0:n_action], res_defender.x[0:n_action], res_attacker.fun
