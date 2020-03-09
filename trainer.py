@@ -5,11 +5,9 @@ import tensorflow as tf
 from stable_baselines import *
 from stable_baselines.ddpg.policies import LnMlpPolicy
 import gym_control
-from gym_control.envs.BioReactor import AttackerMode
 from agents.ddpg_agent import DDPGWrapper
 import math
 import nashpy as nash
-from tqdm import tqdm
 from os import listdir
 from os.path import isfile, join
 from scipy import optimize as op
@@ -61,7 +59,7 @@ class Trainer:
         self.attacker_payoff_table = np.array([[]])
         self.defender_payoff_table = np.array([[]])
 
-        if isfile('attacker_payoff.npy') and isfile('defender_payoff.npy'):
+        if isfile('tb_logs/attacker_payoff.npy') and isfile('tb_logs/defender_payoff.npy'):
             self.load_tables()
 
         self.total_training_steps = total_training_steps
@@ -71,8 +69,9 @@ class Trainer:
             CustomPolicy,
             gym.make('BRPAtt-v0',
                      defender=None,
-                     mode=AttackerMode.Actuation,
-                     range=np.float(0.3)),  # This is a dummy env
+                     compromise_actuation_prob=.5,
+                     compromise_observation_prob=.5,
+                     power=.3),  # This is a dummy env
             verbose=1,
             random_exploration=.1,
             gamma=.95,
@@ -84,8 +83,9 @@ class Trainer:
             if defender_choice[i] != 0.0:
                 env = gym.make('BRPAtt-v0',
                                defender=DDPGWrapper.load(f'params/defender-{i}'),
-                               mode=AttackerMode.Actuation,
-                               range=np.float(0.3))
+                               compromise_actuation_prob=.5,
+                               compromise_observation_prob=.5,
+                               power=.3)
 
                 model.set_env(env)
 
@@ -107,7 +107,9 @@ class Trainer:
         model = DDPG(
             CustomPolicy,
             gym.make('BRPDef-v0',
-                     attacker=None),  # This is a dummy env
+                     attacker=None,
+                     compromise_actuation_prob=.5,
+                     compromise_observation_prob=.5),  # This is a dummy env
             verbose=1,
             random_exploration=.1,
             gamma=.95,
@@ -118,7 +120,10 @@ class Trainer:
         for i in range(len(attacker_choice)):
             if attacker_choice[i] != 0.0:
                 env = gym.make('BRPDef-v0',
-                               attacker=DDPGWrapper.load(f'params/attacker-{i}'))
+                               attacker=DDPGWrapper.load(f'params/attacker-{i}'),
+                               compromise_actuation_prob=.5,
+                               compromise_observation_prob=.5
+                               )
 
                 model.set_env(env)
 
@@ -159,8 +164,9 @@ class Trainer:
             CustomPolicy,
             env=gym.make('BRPAtt-v0',
                          defender=DDPGWrapper.load(f'params/defender-0'),
-                         mode=AttackerMode.Actuation,
-                         range=np.float(0.3)),
+                         compromise_actuation_prob=.5,
+                         compromise_observation_prob=.5,
+                         power=.3),
             verbose=1,
             random_exploration=0.1,
             gamma=0.9,
@@ -205,19 +211,20 @@ class Trainer:
         np.save('defender_payoff', self.defender_payoff_table)
 
     def load_tables(self):
-        self.attacker_payoff_table = np.load('attacker_payoff.npy')
-        self.defender_payoff_table = np.load('defender_payoff.npy')
+        self.attacker_payoff_table = np.load('tb_logs/attacker_payoff.npy')
+        self.defender_payoff_table = np.load('tb_logs/defender_payoff.npy')
 
     def evaluate(self, attacker, defender, episodes=10):
         env = gym.make('BRPAtt-v0',
                        defender=DDPGWrapper.load(f'params/{defender}'),
-                       mode=AttackerMode.Observation,
-                       range=np.float(0.3))
+                       compromise_actuation_prob=.5,
+                       compromise_observation_prob=.5,
+                       power=.3)
         attacker_model = DDPGWrapper.load(f'params/{attacker}')
 
         episode_reward = 0
 
-        for i in tqdm(range(episodes)):
+        for i in range(episodes):
             obs = env.reset()
             done = False
 

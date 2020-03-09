@@ -1,24 +1,27 @@
 import gym
 import numpy as np
+import logging
 from enum import Enum
 from typing import *
 
 
 class BioReactor(gym.Env):
 
-    def __init__(self) -> None:
+    def __init__(self, noise=True) -> None:
         super().__init__()
+        self.logger = logging.getLogger(__class__.__name__)
         self.x = np.array([0., 0.])
 
         self.action_space = gym.spaces.Box(low=-np.array([10.0, 10.0]), high=np.array([10.0, 10.0]))
-        self.observation_space = gym.spaces.Box(low=-np.array([10., 10.]), high=np.array([10., 10.]))
+        self.observation_space = gym.spaces.Box(low=-np.array([10., 10., 0., 0.]), high=np.array([10., 10., 0., 0.]))
 
         self.episode_count = 0
         self.step_count = 0
 
         self.highest_reward = -np.inf
 
-        self.goal = np.array([0.99510292, 1.5122427]) # Unstable
+        self.goal = np.array([0.99510292, 1.5122427])  # Unstable
+        self.noise = noise
 
         self.win_count = 0
 
@@ -33,7 +36,7 @@ class BioReactor(gym.Env):
         ])
 
         self.x = self.x * 1. + dx
-        self.x = np.clip(self.x, self.observation_space.low, self.observation_space.high)
+        self.x = np.clip(self.x, self.observation_space.low[:2], self.observation_space.high[:2])
 
         win = False
         reward = -np.linalg.norm(self.x - self.goal)
@@ -44,7 +47,7 @@ class BioReactor(gym.Env):
         if win:
             self.win_count += 1
 
-        return self.x * (1. + np.random.normal(loc=np.zeros(2,), scale=np.array([0.03, 0.07]))), reward, win, {
+        return np.append(self.x * (1. + np.random.normal(loc=np.zeros(2,), scale=np.array([0.03, 0.07]))) if self.noise else self.x, np.array([0., 0.])), reward, win, {
             'u': u,
             'x': self.x,
             'dx': dx
@@ -55,8 +58,9 @@ class BioReactor(gym.Env):
 
         self.episode_count += 1
         self.step_count = 0
-        self.x = self.observation_space.sample()
-        return self.x
+        self.x = self.observation_space.sample()[:2]
+        self.logger.info(f'Reset... Starting Point: {self.x}')
+        return np.append(self.x, np.array([0., 0.]))
 
     def render(self, mode='human') -> None:
         raise NotImplementedError()
@@ -66,77 +70,88 @@ def mu(x2: float, mu_max: float = 0.53, km: float = 0.12, k1: float = 0.4545) ->
     return mu_max * (x2 / (km + x2 + k1 * x2 * x2))
 
 
-class AttackerMode(Enum):
-    Zero = 0,
-    Observation = 1,
-    Actuation = 2,
-    Both = 3
-
-
-class BioReactorAttacker(BioReactor):  # This is a noise generator attacker.
-
-    def __init__(self, defender, mode: AttackerMode, range: np.float) -> None:
+class AdversarialBioReactor(BioReactor):
+    def __init__(self, compromise_actuation_prob: float, compromise_observation_prob: float) -> None:
         super().__init__()
+        self.logger = logging.getLogger(__class__.__name__)
+        self.compromise_actuation_prob = compromise_actuation_prob
+        self.compromise_observation_prob = compromise_observation_prob
+
+        self.compromise_actuation = False
+        self.compromise_observation = False
+
+    def reset(self) -> Any:
+        obs = super().reset()[:2]
+        self.compromise_observation = np.random.random() < self.compromise_observation_prob
+        self.compromise_actuation = np.random.random() < self.compromise_actuation_prob
+        self.logger.info(f'Observation Compromised: {self.compromise_observation} - Actuation Compromised: {self.compromise_actuation}')
+
+        return np.append(obs, np.array([np.float(self.compromise_observation), np.float(self.compromise_actuation)]))
+
+
+class BioReactorAttacker(AdversarialBioReactor):  # This is a noise generator attacker.
+
+    def __init__(self, defender, compromise_actuation_prob: float, compromise_observation_prob: float, power: float = 0.3) -> None:
+        super().__init__(compromise_actuation_prob, compromise_observation_prob)
+        self.logger = logging.getLogger(__class__.__name__)
         self.defender = defender
 
-        # This is the amount of noise. Two first for the observation, two last for action
+        self.observation_space = gym.spaces.Box(low=np.array([-10., -10., 0.0, 0.0]), high=np.array([10., 10., 1.0, 1.0]))
+        self.action_space = gym.spaces.Box(low=-power * np.array([1.0, 1.0, 1.0, 1.0]),
+                                           high=power * np.array([1.0, 1.0, 1.0, 1.0]))
 
-        if mode == AttackerMode.Zero:
-            self.action_space = gym.spaces.Box(low=-range * np.array([0.0, 0.0, 0.0, 0.0]),
-                                               high=range * np.array([0.0, 0.0, 0.0, 0.0]))
-        if mode == AttackerMode.Observation:
-            self.action_space = gym.spaces.Box(low=-range * np.array([1.0, 1.0, 0.0, 0.0]),
-                                               high=range * np.array([1.0, 1.0, 0.0, 0.0]))
-        if mode == AttackerMode.Actuation:
-            self.action_space = gym.spaces.Box(low=-range * np.array([0.0, 0.0, 1.0, 1.0]),
-                                               high=range * np.array([0.0, 0.0, 1.0, 1.0]))
-        if mode == AttackerMode.Both:
-            self.action_space = gym.spaces.Box(low=-range * np.array([1.0, 1.0, 1.0, 1.0]),
-                                               high=range * np.array([1.0, 1.0, 1.0, 1.0]))
-
-        self.observation_space = gym.spaces.Box(low=-np.array([10., 10.]), high=np.array([10., 10.]))
-
-        self.defender_obs = np.zeros((2,))
+        self.defender_obs = np.zeros((4,))
 
     def step(self, action: np.ndarray) -> Tuple[Any, float, bool, Dict]:
 
         defender_action = self.defender.predict(self.defender_obs)
-        action_and_noise = defender_action * (1. + action[2:])
+        action_and_noise = defender_action * (1. + action[2:]) if self.compromise_actuation else defender_action
 
         obs, reward, done, info = super().step(action_and_noise)
-        self.defender_obs = obs * (1. + action[:2])
+        self.defender_obs = np.append(obs[:2] * (1. + action[:2]) if self.compromise_observation else obs[:2], np.array([np.float(self.compromise_actuation), np.float(self.compromise_observation)]))
 
         info['a'] = action[2:]
         info['o'] = action[:2]
 
-        return obs, -reward, done, info
+        ret = np.append(obs[:2], np.array([np.float(self.compromise_actuation), np.float(self.compromise_observation)])), -reward, done, info
+        assert ret[0].shape == (4,)
+        return ret
 
     def reset(self) -> Any:
         self.defender_obs = super().reset()
+        assert self.defender_obs.shape == (4,)
         return self.defender_obs
 
     def render(self, mode='human') -> None:
         raise NotImplementedError()
 
 
-class BioReactorDefender(BioReactor):
+class BioReactorDefender(AdversarialBioReactor):
 
-    def __init__(self, attacker) -> None:
-        super().__init__()
+    def __init__(self, attacker, compromise_actuation_prob: float, compromise_observation_prob: float) -> None:
+        super().__init__(compromise_actuation_prob, compromise_observation_prob)
+        self.logger = logging.getLogger(__class__.__name__)
         self.attacker = attacker
-        self.attacker_obs = np.zeros((2,))
+        self.attacker_obs = np.zeros((4,))
+
+        self.observation_space = gym.spaces.Box(low=np.array([-10., -10., 0., 0.]),
+                                                high=np.array([10., 10., 1., 1.]))
+        self.action_space = gym.spaces.Box(low=-np.array([10., 10.]),
+                                           high=np.array([10., 10.]))
 
     def step(self, action: np.ndarray) -> Tuple[Any, float, bool, Dict]:
         attacker_action = self.attacker.predict(self.attacker_obs)
-        action_and_noise = action * (1. + attacker_action[2:])
+        action_and_noise = action * (1. + attacker_action[2:]) if self.compromise_actuation else action
 
         obs, reward, done, info = super().step(action_and_noise)
-        self.attacker_obs = obs
+        self.attacker_obs = np.append(obs[:2], np.array([np.float(self.compromise_actuation), np.float(self.compromise_observation)]))
 
         info['a'] = attacker_action[2:]
         info['o'] = attacker_action[:2]
 
-        return obs * (1. + attacker_action[:2]), reward, done, info
+        defender_obs = obs[:2] * (1. + attacker_action[:2]) if self.compromise_observation else obs[:2]
+
+        return np.append(defender_obs[:2], np.array([np.float(self.compromise_actuation), np.float(self.compromise_observation)])), reward, done, info
 
     def reset(self) -> Any:
         self.attacker_obs = super().reset()
