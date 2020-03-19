@@ -59,7 +59,7 @@ class BioReactor(gym.Env):
         self.episode_count += 1
         self.step_count = 0
         self.x = self.observation_space.sample()[:2]
-        self.logger.info(f'Reset... Starting Point: {self.x}')
+        self.logger.debug(f'Reset... Starting Point: {self.x}')
         return np.append(self.x, np.array([0., 0.]))
 
     def render(self, mode='human') -> None:
@@ -84,7 +84,7 @@ class AdversarialBioReactor(BioReactor):
         obs = super().reset()[:2]
         self.compromise_observation = np.random.random() < self.compromise_observation_prob
         self.compromise_actuation = np.random.random() < self.compromise_actuation_prob
-        self.logger.info(f'Observation Compromised: {self.compromise_observation} - Actuation Compromised: {self.compromise_actuation}')
+        self.logger.debug(f'Observation Compromised: {self.compromise_observation} - Actuation Compromised: {self.compromise_actuation}')
 
         return np.append(obs, np.array([np.float(self.compromise_observation), np.float(self.compromise_actuation)]))
 
