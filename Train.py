@@ -32,9 +32,12 @@ if __name__ == '__main__':
 
     rootLogger.info(f'Initial payoff table: {trainer.attacker_payoff_table, trainer.defender_payoff_table}')
 
+    iteration = 1
+
     try:
         while True:
             # Training new defender
+            rootLogger.info(f'Starting Iteration {iteration}')
             rootLogger.info('Training new defender...')
             ae, de = trainer.solve_equilibrium()
             rootLogger.info(f'Payoff_tables: {trainer.attacker_payoff_table, trainer.defender_payoff_table}')
@@ -63,6 +66,8 @@ if __name__ == '__main__':
             rootLogger.info(f'New Attacker Utility Vs. Mixed Defender Equilibrium: {nau}')
             rootLogger.info(f'Attacker Improvement: {(1 - (nau / mau)) * 100:.2f}%')
             trainer.update_attacker_payoff_table(au, du)
+
+            iteration += 1
 
     except KeyboardInterrupt:
         rootLogger.info(f'Interrupting...')
