@@ -28,7 +28,7 @@ class BioReactor(gym.Env):
     def step(self, action: np.ndarray) -> Tuple[Any, float, bool, Dict]:  # Obs, Reward, Done, Info
         self.step_count += 1
 
-        u = action
+        u = action * (1. + np.random.normal(loc=np.zeros(2,), scale=np.array([0.00, 0.07]))) if self.noise else action
 
         dx = np.array([
             (mu(self.x[1]) - u[0]) * self.x[0],
@@ -47,7 +47,7 @@ class BioReactor(gym.Env):
         if win:
             self.win_count += 1
 
-        return np.append(self.x * (1. + np.random.normal(loc=np.zeros(2,), scale=np.array([0.03, 0.07]))) if self.noise else self.x, np.array([0., 0.])), reward, win, {
+        return np.append(self.x * (1. + np.random.normal(loc=np.zeros(2,), scale=np.array([0.00, 0.07]))) if self.noise else self.x, np.array([0., 0.])), reward, win, {
             'u': u,
             'x': self.x,
             'dx': dx
