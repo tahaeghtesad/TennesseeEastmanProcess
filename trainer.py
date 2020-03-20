@@ -312,7 +312,7 @@ class Trainer:
         self.logger.debug(f'A_eq:\t{A_eq.shape}\tb_eq:\t{b_eq.shape}')
         self.logger.debug(f'c:\t\t{c.shape}')
 
-        res_attacker = op.linprog(c, A_ub, b_ub, A_eq, b_eq, bounds=bound)
+        res_attacker = op.linprog(c, A_ub, b_ub, A_eq, b_eq, bounds=bound, method="interior-point")
 
         self.logger.debug(f'x:\t\t{res_attacker.x.shape}')
         return res_attacker.x[0:n]
