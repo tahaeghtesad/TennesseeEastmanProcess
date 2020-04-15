@@ -17,37 +17,15 @@ import logging
 def callback(locals_, globals_):
     self_ = locals_['self']
 
+    variables = ['u', 'x', 'dx', 'a', 'o']
+
     if 'info' in locals_ and 'writer' in locals_ and locals_['writer'] is not None:
-
-        if 'u' in locals_['info']:
-            for i in range(len(locals_['info']['u'])):
-                summary = tf.Summary(
-                    value=[tf.Summary.Value(tag=f'env/u{i}', simple_value=locals_['info']['u'][i])])
-                locals_['writer'].add_summary(summary, self_.num_timesteps)
-
-        if 'x' in locals_['info']:
-            for i in range(len(locals_['info']['x'])):
-                summary = tf.Summary(
-                    value=[tf.Summary.Value(tag=f'env/x{i}', simple_value=locals_['info']['x'][i])])
-                locals_['writer'].add_summary(summary, self_.num_timesteps)
-
-        if 'dx' in locals_['info']:
-            for i in range(len(locals_['info']['dx'])):
-                summary = tf.Summary(
-                    value=[tf.Summary.Value(tag=f'env/dx{i}', simple_value=locals_['info']['dx'][i])])
-                locals_['writer'].add_summary(summary, self_.num_timesteps)
-
-        if 'a' in locals_['info']:
-            for i in range(len(locals_['info']['a'])):
-                summary = tf.Summary(
-                    value=[tf.Summary.Value(tag=f'env/a{i}', simple_value=locals_['info']['a'][i])])
-                locals_['writer'].add_summary(summary, self_.num_timesteps)
-
-        if 'o' in locals_['info']:
-            for i in range(len(locals_['info']['o'])):
-                summary = tf.Summary(
-                    value=[tf.Summary.Value(tag=f'env/o{i}', simple_value=locals_['info']['o'][i])])
-                locals_['writer'].add_summary(summary, self_.num_timesteps)
+        for var in variables:
+            if var in locals_['info']:
+                for i in range(len(locals_['info'][var])):
+                    summary = tf.Summary(
+                        value=[tf.Summary.Value(tag=f'env/{var}{i}', simple_value=locals_['info'][var][i])])
+                    locals_['writer'].add_summary(summary, self_.num_timesteps)
 
     return True
 
