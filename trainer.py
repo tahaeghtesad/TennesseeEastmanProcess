@@ -19,25 +19,32 @@ def callback(locals_, globals_):
 
     if 'info' in locals_ and 'writer' in locals_ and locals_['writer'] is not None:
 
-        for i in range(2):
-            summary = tf.Summary(
-                value=[tf.Summary.Value(tag=f'env/u{i}', simple_value=locals_['info']['u'][i])])
-            locals_['writer'].add_summary(summary, self_.num_timesteps)
+        if 'u' in locals_['info']:
+            for i in range(len(locals_['info']['u'])):
+                summary = tf.Summary(
+                    value=[tf.Summary.Value(tag=f'env/u{i}', simple_value=locals_['info']['u'][i])])
+                locals_['writer'].add_summary(summary, self_.num_timesteps)
 
-            summary = tf.Summary(
-                value=[tf.Summary.Value(tag=f'env/x{i}', simple_value=locals_['info']['x'][i])])
-            locals_['writer'].add_summary(summary, self_.num_timesteps)
+        if 'x' in locals_['info']:
+            for i in range(len(locals_['info']['x'])):
+                summary = tf.Summary(
+                    value=[tf.Summary.Value(tag=f'env/x{i}', simple_value=locals_['info']['x'][i])])
+                locals_['writer'].add_summary(summary, self_.num_timesteps)
 
-            summary = tf.Summary(
-                value=[tf.Summary.Value(tag=f'env/dx{i}', simple_value=locals_['info']['dx'][i])])
-            locals_['writer'].add_summary(summary, self_.num_timesteps)
+        if 'dx' in locals_['info']:
+            for i in range(len(locals_['info']['dx'])):
+                summary = tf.Summary(
+                    value=[tf.Summary.Value(tag=f'env/dx{i}', simple_value=locals_['info']['dx'][i])])
+                locals_['writer'].add_summary(summary, self_.num_timesteps)
 
-            if 'a' in locals_['info']:
+        if 'a' in locals_['info']:
+            for i in range(len(locals_['info']['a'])):
                 summary = tf.Summary(
                     value=[tf.Summary.Value(tag=f'env/a{i}', simple_value=locals_['info']['a'][i])])
                 locals_['writer'].add_summary(summary, self_.num_timesteps)
 
-            if 'o' in locals_['info']:
+        if 'o' in locals_['info']:
+            for i in range(len(locals_['info']['o'])):
                 summary = tf.Summary(
                     value=[tf.Summary.Value(tag=f'env/o{i}', simple_value=locals_['info']['o'][i])])
                 locals_['writer'].add_summary(summary, self_.num_timesteps)
@@ -55,7 +62,7 @@ class CustomPolicy(LnMlpPolicy):
 
 class Trainer:
 
-    def __init__(self, total_training_steps):
+    def __init__(self, total_training_steps, env):
         # Columns are attackers, rows are defenders
         self.attacker_payoff_table = np.array([[]])
         self.defender_payoff_table = np.array([[]])
@@ -65,11 +72,12 @@ class Trainer:
 
         self.total_training_steps = total_training_steps
         self.logger = logging.getLogger(__name__)
+        self.env = env
 
     def train_attacker(self, attacker_choice, defender_choice):  # TODO propose new name for defender_choice!
         model = DDPG(
             CustomPolicy,
-            gym.make('BRPAtt-v0',
+            gym.make(f'{self.env}Att-v0',
                      defender=None,
                      compromise_actuation_prob=.5,
                      compromise_observation_prob=.5,
@@ -83,7 +91,7 @@ class Trainer:
 
         for i in range(len(defender_choice)):
             if int(self.total_training_steps * defender_choice[i]) != 0:
-                env = gym.make('BRPAtt-v0',
+                env = gym.make(f'{self.env}Att-v0',
                                defender=DDPGWrapper.load(f'params/defender-{i}'),
                                compromise_actuation_prob=.5,
                                compromise_observation_prob=.5,
@@ -93,7 +101,7 @@ class Trainer:
 
                 model.learn(total_timesteps=round(defender_choice[i] * self.total_training_steps),
                             callback=callback,
-                            # tb_log_name=f'Attacker'
+                            tb_log_name=f'Attacker-{i}'
                             )
 
         model.save(f'params/attacker-{len(attacker_choice)}')
@@ -108,7 +116,7 @@ class Trainer:
     def train_defender(self, attacker_choice, defender_choice):
         model = DDPG(
             CustomPolicy,
-            gym.make('BRPDef-v0',
+            gym.make(f'{self.env}Def-v0',
                      attacker=None,
                      compromise_actuation_prob=.5,
                      compromise_observation_prob=.5),  # This is a dummy env
@@ -121,7 +129,7 @@ class Trainer:
 
         for i in range(len(attacker_choice)):
             if int(self.total_training_steps * attacker_choice[i]) != 0:
-                env = gym.make('BRPDef-v0',
+                env = gym.make(f'{self.env}Def-v0',
                                attacker=DDPGWrapper.load(f'params/attacker-{i}'),
                                compromise_actuation_prob=.5,
                                compromise_observation_prob=.5
@@ -131,7 +139,7 @@ class Trainer:
 
                 model.learn(total_timesteps=round(attacker_choice[i] * self.total_training_steps),
                             callback=callback,
-                            # tb_log_name=f'Defender'
+                            tb_log_name=f'Defender-{i}'
                             )
 
         model.save(f'params/defender-{len(defender_choice)}')
@@ -146,7 +154,7 @@ class Trainer:
     def bootstrap_defender(self):
         model = DDPG(
             CustomPolicy,
-            env=gym.make('BRP-v0'),
+            env=gym.make(f'{self.env}-v0'),
             verbose=1,
             random_exploration=0.1,
             gamma=0.9,
@@ -156,7 +164,7 @@ class Trainer:
 
         model.learn(self.total_training_steps,
                     callback=callback,
-                    tb_log_name='Defender'
+                    tb_log_name='Defender-0'
                     )
 
         model.save('params/defender-0')
@@ -164,7 +172,7 @@ class Trainer:
     def bootstrap_attacker(self):
         model = DDPG(
             CustomPolicy,
-            env=gym.make('BRPAtt-v0',
+            env=gym.make(f'{self.env}Att-v0',
                          defender=DDPGWrapper.load(f'params/defender-0'),
                          compromise_actuation_prob=.5,
                          compromise_observation_prob=.5,
@@ -178,7 +186,7 @@ class Trainer:
 
         model.learn(self.total_training_steps,
                     callback=callback,
-                    tb_log_name='Attacker'
+                    tb_log_name='Attacker-0'
                     )
 
         model.save('params/attacker-0')
@@ -219,7 +227,7 @@ class Trainer:
         self.defender_payoff_table = np.load('tb_logs/defender_payoff.npy')
 
     def evaluate(self, attacker, defender, episodes=10):
-        env = gym.make('BRPAtt-v0',
+        env = gym.make(f'{self.env}Att-v0',
                        defender=DDPGWrapper.load(f'params/{defender}'),
                        compromise_actuation_prob=.5,
                        compromise_observation_prob=.5,

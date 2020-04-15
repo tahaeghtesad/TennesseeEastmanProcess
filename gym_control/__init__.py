@@ -28,3 +28,24 @@ register(
     max_episode_steps=200,
     reward_threshold=60.0,
 )
+
+register(
+    id='TT-v0',
+    entry_point='gym_control.envs:ThreeTank',
+    max_episode_steps=200,
+    reward_threshold=70.0,
+)
+
+register(
+    id='TTAtt-v0',
+    entry_point='gym_control.envs:ThreeTankAttacker',
+    max_episode_steps=200,
+    reward_threshold=20,
+)
+
+register(
+    id='TTDef-v0',
+    entry_point='gym_control.envs:ThreeTankDefender',
+    max_episode_steps=200,
+    reward_threshold=60.0,
+)
