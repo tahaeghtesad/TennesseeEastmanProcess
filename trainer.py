@@ -63,12 +63,12 @@ class Trainer:
             verbose=1,
             random_exploration=.1,
             gamma=.95,
-            # full_tensorboard_log=True,
-            # tensorboard_log='tb_logs'
+            full_tensorboard_log=True,
+            tensorboard_log='tb_logs'
         )
 
         for i in range(len(defender_choice)):
-            if int(self.total_training_steps * defender_choice[i]) != 0:
+            if int(self.total_training_steps * defender_choice[i]) > 150:
                 env = gym.make(f'{self.env}Att-v0',
                                defender=DDPGWrapper.load(f'params/defender-{i}'),
                                compromise_actuation_prob=.5,
@@ -101,12 +101,12 @@ class Trainer:
             verbose=1,
             random_exploration=.1,
             gamma=.95,
-            # full_tensorboard_log=True,
-            # tensorboard_log='tb_logs'
+            full_tensorboard_log=True,
+            tensorboard_log='tb_logs'
         )
 
         for i in range(len(attacker_choice)):
-            if int(self.total_training_steps * attacker_choice[i]) != 0:
+            if int(self.total_training_steps * attacker_choice[i]) > 150:
                 env = gym.make(f'{self.env}Def-v0',
                                attacker=DDPGWrapper.load(f'params/attacker-{i}'),
                                compromise_actuation_prob=.5,
@@ -170,31 +170,8 @@ class Trainer:
         model.save('params/attacker-0')
 
     def solve_equilibrium(self):
-        # assert self.attacker_payoff_table.shape == self.defender_payoff_table.shape
-        # if self.attacker_payoff_table.size == 1:
-        #     return np.array([1.]), np.array([1.])
-        # elif self.attacker_payoff_table.shape == (1, 2):
-        #     d = np.array([1.])
-        #     a = np.array([0., 0.])
-        #     a[np.argmax(self.attacker_payoff_table)] = 1.
-        #     return a, d
-        # elif self.attacker_payoff_table.shape == (2, 1):
-        #     a = np.array([1.])
-        #     d = np.array([0., 0.])
-        #     d[np.argmax(self.defender_payoff_table)] = 1.
-        #     return a, d
-        #
-        # game = nash.Game(self.attacker_payoff_table, self.defender_payoff_table)
-        # equilibrium = game.lemke_howson(initial_dropped_label=10000)
-        # return equilibrium[1], equilibrium[0]
         return self.find_zero_sum_mixed_ne(self.defender_payoff_table),\
                self.find_zero_sum_mixed_ne(-self.defender_payoff_table.transpose())  # Or it can be self.attacker_payoff_table.transpose()
-
-    # def solve_equilibrium(self):
-    #     assert (self.defender_payoff_table == -self.attacker_payoff_table).all()
-    #     assert self.defender_payoff_table.shape[0] == self.defender_payoff_table.shape[1]
-    #     ae, de, _ = self.find_zero_sum_mixed_ne(self.defender_payoff_table)
-    #     return ae, de
 
     def save_tables(self):
         np.save('attacker_payoff', self.attacker_payoff_table)

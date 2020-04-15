@@ -13,7 +13,7 @@ class BioReactor(gym.Env):
         self.x = np.array([0., 0.])
 
         self.action_space = gym.spaces.Box(low=-np.array([10.0, 10.0]), high=np.array([10.0, 10.0]))
-        self.observation_space = gym.spaces.Box(low=-np.array([10., 10., 0., 0.]), high=np.array([10., 10., 0., 0.]))
+        self.observation_space = gym.spaces.Box(low=-np.array([10., 10.]), high=np.array([10., 10.]))
 
         self.episode_count = 0
         self.step_count = 0
@@ -47,7 +47,7 @@ class BioReactor(gym.Env):
         if win:
             self.win_count += 1
 
-        return np.append(self.x * (1. + np.random.normal(loc=np.zeros(2,), scale=np.array([0.00, 0.07]))) if self.noise else self.x, np.array([0., 0.])), reward, win, {
+        return self.x * (1. + np.random.normal(loc=np.zeros(2,), scale=np.array([0.00, 0.07]))) if self.noise else self.x, reward, win, {
             'u': u,
             'x': self.x,
             'dx': dx
@@ -60,7 +60,7 @@ class BioReactor(gym.Env):
         self.step_count = 0
         self.x = self.observation_space.sample()[:2]
         self.logger.debug(f'Reset... Starting Point: {self.x}')
-        return np.append(self.x, np.array([0., 0.]))
+        return self.x
 
     def render(self, mode='human') -> None:
         raise NotImplementedError()
@@ -70,7 +70,7 @@ def mu(x2: float, mu_max: float = 0.53, km: float = 0.12, k1: float = 0.4545) ->
     return mu_max * (x2 / (km + x2 + k1 * x2 * x2))
 
 
-class AdversarialBioReactor(BioReactor):
+class AdversarialBioReactor:
     def __init__(self, compromise_actuation_prob: float, compromise_observation_prob: float) -> None:
         super().__init__()
         self.logger = logging.getLogger(__class__.__name__)
@@ -80,8 +80,10 @@ class AdversarialBioReactor(BioReactor):
         self.compromise_actuation = False
         self.compromise_observation = False
 
+        self.env = gym.make('BRP-v0')
+
     def reset(self) -> Any:
-        obs = super().reset()[:2]
+        obs = self.env.reset()
         self.compromise_observation = np.random.random() < self.compromise_observation_prob
         self.compromise_actuation = np.random.random() < self.compromise_actuation_prob
         self.logger.debug(f'Observation Compromised: {self.compromise_observation} - Actuation Compromised: {self.compromise_actuation}')
@@ -107,7 +109,7 @@ class BioReactorAttacker(AdversarialBioReactor):  # This is a noise generator at
         defender_action = self.defender.predict(self.defender_obs)
         action_and_noise = defender_action * (1. + action[2:]) if self.compromise_actuation else defender_action
 
-        obs, reward, done, info = super().step(action_and_noise)
+        obs, reward, done, info = self.env.step(action_and_noise)
         self.defender_obs = np.append(obs[:2] * (1. + action[:2]) if self.compromise_observation else obs[:2], np.array([np.float(self.compromise_actuation), np.float(self.compromise_observation)]))
 
         info['a'] = action[2:]
@@ -143,7 +145,7 @@ class BioReactorDefender(AdversarialBioReactor):
         attacker_action = self.attacker.predict(self.attacker_obs)
         action_and_noise = action * (1. + attacker_action[2:]) if self.compromise_actuation else action
 
-        obs, reward, done, info = super().step(action_and_noise)
+        obs, reward, done, info = self.env.step(action_and_noise)
         self.attacker_obs = np.append(obs[:2], np.array([np.float(self.compromise_actuation), np.float(self.compromise_observation)]))
 
         info['a'] = attacker_action[2:]
