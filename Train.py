@@ -16,7 +16,7 @@ if __name__ == '__main__':
     fileHandler.setFormatter(logFormatter)
     rootLogger.addHandler(fileHandler)
 
-    trainer = Trainer(total_training_steps=500 * 1000, env='TT')
+    trainer = Trainer(total_training_steps=250 * 1000, env='TT', exploration=.01)
 
     rootLogger.info('Bootstrapping Defender...')
     trainer.bootstrap_defender()

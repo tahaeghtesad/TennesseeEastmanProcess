@@ -30,18 +30,30 @@ def callback(locals_, globals_):
     return True
 
 
-class CustomPolicy(LnMlpPolicy):
-    def __init__(self, sess, ob_space, ac_space, n_env, n_steps, n_batch, reuse=False, **_kwargs):
-        super().__init__(sess, ob_space, ac_space, n_env, n_steps, n_batch, reuse,
-                         act_fun=tf.nn.elu,
-                         layers=[64] * 4,
-                         **_kwargs)
-
-
 class Trainer:
 
-    def __init__(self, total_training_steps, env):
+    def __init__(self, total_training_steps,
+                 env,
+                 activation_function=tf.nn.elu,
+                 layers=[64] * 4,
+                 compromise_actuation_prob=.5,
+                 compromise_observation_prob=.5,
+                 gamma=.9,
+                 tb_log=True,
+                 exploration=.1,
+                 attacker_power=.3):
         # Columns are attackers, rows are defenders
+        self.attacker_power = attacker_power
+        self.exploration = exploration
+        self.compromise_observation_prob = compromise_observation_prob
+        self.compromise_actuation_prob = compromise_actuation_prob
+
+        self.gamma = gamma
+        self.layers = layers
+        self.tb_log = tb_log
+
+        self.activation_function = activation_function
+
         self.attacker_payoff_table = np.array([[]])
         self.defender_payoff_table = np.array([[]])
 
@@ -52,18 +64,27 @@ class Trainer:
         self.logger = logging.getLogger(__name__)
         self.env = env
 
+    def get_policy_class(self, layers, act_fun):
+        class CustomPolicy(LnMlpPolicy):
+            def __init__(self, sess, ob_space, ac_space, n_env, n_steps, n_batch, reuse=False, **_kwargs):
+                super().__init__(sess, ob_space, ac_space, n_env, n_steps, n_batch, reuse,
+                                 act_fun=act_fun,
+                                 layers=layers,
+                                 **_kwargs)
+        return CustomPolicy
+
     def train_attacker(self, attacker_choice, defender_choice):  # TODO propose new name for defender_choice!
         model = DDPG(
-            CustomPolicy,
+            self.get_policy_class(self.layers, self.activation_function),
             gym.make(f'{self.env}Att-v0',
                      defender=None,
-                     compromise_actuation_prob=.5,
-                     compromise_observation_prob=.5,
-                     power=.3),  # This is a dummy env
+                     compromise_actuation_prob=self.compromise_actuation_prob,
+                     compromise_observation_prob=self.compromise_observation_prob,
+                     power=self.attacker_power),  # This is a dummy env
             verbose=1,
-            random_exploration=.1,
-            gamma=.95,
-            full_tensorboard_log=True,
+            random_exploration=self.exploration,
+            gamma=self.gamma,
+            full_tensorboard_log=self.tb_log,
             tensorboard_log='tb_logs'
         )
 
@@ -71,9 +92,9 @@ class Trainer:
             if int(self.total_training_steps * defender_choice[i]) > 150:
                 env = gym.make(f'{self.env}Att-v0',
                                defender=DDPGWrapper.load(f'params/defender-{i}'),
-                               compromise_actuation_prob=.5,
-                               compromise_observation_prob=.5,
-                               power=.3)
+                               compromise_actuation_prob=self.compromise_actuation_prob,
+                               compromise_observation_prob=self.compromise_observation_prob,
+                               power=self.attacker_power)
 
                 model.set_env(env)
 
@@ -93,15 +114,15 @@ class Trainer:
 
     def train_defender(self, attacker_choice, defender_choice):
         model = DDPG(
-            CustomPolicy,
+            self.get_policy_class(self.layers, self.activation_function),
             gym.make(f'{self.env}Def-v0',
                      attacker=None,
-                     compromise_actuation_prob=.5,
-                     compromise_observation_prob=.5),  # This is a dummy env
+                     compromise_actuation_prob=self.compromise_actuation_prob,
+                     compromise_observation_prob=self.compromise_observation_prob),  # This is a dummy env
             verbose=1,
-            random_exploration=.1,
-            gamma=.95,
-            full_tensorboard_log=True,
+            random_exploration=self.exploration,
+            gamma=self.gamma,
+            full_tensorboard_log=self.tb_log,
             tensorboard_log='tb_logs'
         )
 
@@ -109,8 +130,8 @@ class Trainer:
             if int(self.total_training_steps * attacker_choice[i]) > 150:
                 env = gym.make(f'{self.env}Def-v0',
                                attacker=DDPGWrapper.load(f'params/attacker-{i}'),
-                               compromise_actuation_prob=.5,
-                               compromise_observation_prob=.5
+                               compromise_actuation_prob=self.compromise_actuation_prob,
+                               compromise_observation_prob=self.compromise_observation_prob
                                )
 
                 model.set_env(env)
@@ -131,12 +152,12 @@ class Trainer:
 
     def bootstrap_defender(self):
         model = DDPG(
-            CustomPolicy,
+            self.get_policy_class(self.layers, self.activation_function),
             env=gym.make(f'{self.env}-v0'),
             verbose=1,
-            random_exploration=0.1,
-            gamma=0.9,
-            full_tensorboard_log=True,
+            random_exploration=self.exploration,
+            gamma=self.gamma,
+            full_tensorboard_log=self.tb_log,
             tensorboard_log='tb_logs'
         )
 
@@ -149,16 +170,16 @@ class Trainer:
 
     def bootstrap_attacker(self):
         model = DDPG(
-            CustomPolicy,
+            self.get_policy_class(self.layers, self.activation_function),
             env=gym.make(f'{self.env}Att-v0',
                          defender=DDPGWrapper.load(f'params/defender-0'),
-                         compromise_actuation_prob=.5,
-                         compromise_observation_prob=.5,
+                         compromise_actuation_prob=self.compromise_actuation_prob,
+                         compromise_observation_prob=self.compromise_observation_prob,
                          power=.3),
             verbose=1,
-            random_exploration=0.1,
-            gamma=0.9,
-            full_tensorboard_log=True,
+            random_exploration=self.exploration,
+            gamma=self.gamma,
+            full_tensorboard_log=self.tb_log,
             tensorboard_log='tb_logs'
         )
 
@@ -184,8 +205,8 @@ class Trainer:
     def evaluate(self, attacker, defender, episodes=10):
         env = gym.make(f'{self.env}Att-v0',
                        defender=DDPGWrapper.load(f'params/{defender}'),
-                       compromise_actuation_prob=.5,
-                       compromise_observation_prob=.5,
+                       compromise_actuation_prob=self.compromise_actuation_prob,
+                       compromise_observation_prob=self.compromise_observation_prob,
                        power=.3)
         attacker_model = DDPGWrapper.load(f'params/{attacker}')
 
