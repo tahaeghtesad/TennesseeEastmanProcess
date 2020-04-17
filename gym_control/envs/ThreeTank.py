@@ -8,7 +8,7 @@ from typing import *
 
 class ThreeTank(gym.Env):
 
-    def __init__(self, noise=False, proximity=0.01) -> None:
+    def __init__(self, noise=True, proximity=0.01) -> None:
         super().__init__()
         self.logger = logging.getLogger(__class__.__name__)
         self.x = np.array([0., 0., 0.0])
