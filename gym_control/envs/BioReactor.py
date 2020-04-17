@@ -70,7 +70,7 @@ def mu(x2: float, mu_max: float = 0.53, km: float = 0.12, k1: float = 0.4545) ->
     return mu_max * (x2 / (km + x2 + k1 * x2 * x2))
 
 
-class AdversarialBioReactor:
+class AdversarialBioReactor(gym.Env):
     def __init__(self, compromise_actuation_prob: float, compromise_observation_prob: float) -> None:
         super().__init__()
         self.logger = logging.getLogger(__class__.__name__)
