@@ -76,7 +76,7 @@ class Trainer:
     def train_attacker(self, attacker_choice, defender_choice):  # TODO propose new name for defender_choice!
         model = DDPG(
             self.get_policy_class(self.layers, self.activation_function),
-            gym.make(f'{self.env}Att-v0',
+            gym.make('Historitized-v0', env=f'{self.env}Att-v0',
                      defender=None,
                      compromise_actuation_prob=self.compromise_actuation_prob,
                      compromise_observation_prob=self.compromise_observation_prob,
@@ -90,7 +90,7 @@ class Trainer:
 
         for i in range(len(defender_choice)):
             if int(self.total_training_steps * defender_choice[i]) > 150:
-                env = gym.make(f'{self.env}Att-v0',
+                env = gym.make('Historitized-v0', env=f'{self.env}Att-v0',
                                defender=DDPGWrapper.load(f'params/defender-{i}'),
                                compromise_actuation_prob=self.compromise_actuation_prob,
                                compromise_observation_prob=self.compromise_observation_prob,
@@ -115,7 +115,7 @@ class Trainer:
     def train_defender(self, attacker_choice, defender_choice):
         model = DDPG(
             self.get_policy_class(self.layers, self.activation_function),
-            gym.make(f'{self.env}Def-v0',
+            gym.make('Historitized-v0', env=f'{self.env}Def-v0',
                      attacker=None,
                      compromise_actuation_prob=self.compromise_actuation_prob,
                      compromise_observation_prob=self.compromise_observation_prob),  # This is a dummy env
@@ -128,7 +128,7 @@ class Trainer:
 
         for i in range(len(attacker_choice)):
             if int(self.total_training_steps * attacker_choice[i]) > 150:
-                env = gym.make(f'{self.env}Def-v0',
+                env = gym.make('Historitized-v0', env=f'{self.env}Def-v0',
                                attacker=DDPGWrapper.load(f'params/attacker-{i}'),
                                compromise_actuation_prob=self.compromise_actuation_prob,
                                compromise_observation_prob=self.compromise_observation_prob
@@ -153,7 +153,7 @@ class Trainer:
     def bootstrap_defender(self):
         model = DDPG(
             self.get_policy_class(self.layers, self.activation_function),
-            env=gym.make(f'{self.env}-v0'),
+            env=gym.make('Historitized-v0', env=f'{self.env}-v0'),
             verbose=1,
             random_exploration=self.exploration,
             gamma=self.gamma,
@@ -171,7 +171,7 @@ class Trainer:
     def bootstrap_attacker(self):
         model = DDPG(
             self.get_policy_class(self.layers, self.activation_function),
-            env=gym.make(f'{self.env}Att-v0',
+            env=gym.make('Historitized-v0', env=f'{self.env}Att-v0',
                          defender=DDPGWrapper.load(f'params/defender-0'),
                          compromise_actuation_prob=self.compromise_actuation_prob,
                          compromise_observation_prob=self.compromise_observation_prob,
@@ -203,7 +203,7 @@ class Trainer:
         self.defender_payoff_table = np.load('tb_logs/defender_payoff.npy')
 
     def evaluate(self, attacker, defender, episodes=10):
-        env = gym.make(f'{self.env}Att-v0',
+        env = gym.make('Historitized-v0', env=f'{self.env}Att-v0',
                        defender=DDPGWrapper.load(f'params/{defender}'),
                        compromise_actuation_prob=self.compromise_actuation_prob,
                        compromise_observation_prob=self.compromise_observation_prob,
