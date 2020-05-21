@@ -5,7 +5,7 @@ import tensorflow as tf
 from stable_baselines import *
 from stable_baselines.ddpg.policies import LnMlpPolicy
 import gym_control
-from agents.ddpg_agent import DDPGWrapper
+from agents.ddpg_agent import DDPGWrapperHistory, DDPGWrapper
 import math
 import nashpy as nash
 from os import listdir
@@ -91,7 +91,7 @@ class Trainer:
         for i in range(len(defender_choice)):
             if int(self.total_training_steps * defender_choice[i]) > 150:
                 env = gym.make('Historitized-v0', env=f'{self.env}Att-v0',
-                               defender=DDPGWrapper.load(f'params/defender-{i}'),
+                               defender=DDPGWrapperHistory.load(f'params/defender-{i}'),
                                compromise_actuation_prob=self.compromise_actuation_prob,
                                compromise_observation_prob=self.compromise_observation_prob,
                                power=self.attacker_power)
@@ -129,7 +129,7 @@ class Trainer:
         for i in range(len(attacker_choice)):
             if int(self.total_training_steps * attacker_choice[i]) > 150:
                 env = gym.make('Historitized-v0', env=f'{self.env}Def-v0',
-                               attacker=DDPGWrapper.load(f'params/attacker-{i}'),
+                               attacker=DDPGWrapperHistory.load(f'params/attacker-{i}'),
                                compromise_actuation_prob=self.compromise_actuation_prob,
                                compromise_observation_prob=self.compromise_observation_prob
                                )
@@ -172,7 +172,7 @@ class Trainer:
         model = DDPG(
             self.get_policy_class(self.layers, self.activation_function),
             env=gym.make('Historitized-v0', env=f'{self.env}Att-v0',
-                         defender=DDPGWrapper.load(f'params/defender-0'),
+                         defender=DDPGWrapperHistory.load(f'params/defender-0'),
                          compromise_actuation_prob=self.compromise_actuation_prob,
                          compromise_observation_prob=self.compromise_observation_prob,
                          power=.3),
@@ -204,7 +204,7 @@ class Trainer:
 
     def evaluate(self, attacker, defender, episodes=10):
         env = gym.make('Historitized-v0', env=f'{self.env}Att-v0',
-                       defender=DDPGWrapper.load(f'params/{defender}'),
+                       defender=DDPGWrapperHistory.load(f'params/{defender}'),
                        compromise_actuation_prob=self.compromise_actuation_prob,
                        compromise_observation_prob=self.compromise_observation_prob,
                        power=.3)

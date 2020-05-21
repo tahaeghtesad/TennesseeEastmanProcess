@@ -115,7 +115,7 @@ class BioReactorAttacker(AdversarialBioReactor):  # This is a noise generator at
         action_and_noise = defender_action * (1. + action[self.env.observation_dim:] * self.compromise[self.env.observation_dim:])
 
         obs, reward, done, info = self.env.step(action_and_noise)
-        self.defender_obs = np.concatenate((obs * (1. + action[:self.env.observation_dim] * self.compromise)), axis=0)
+        self.defender_obs = np.concatenate((obs * (1. + action[:self.env.observation_dim] * self.compromise[:self.env.observation_dim]), self.compromise), axis=0)
 
         info['a'] = action[self.env.observation_dim:]
         info['o'] = action[:self.env.observation_dim]
