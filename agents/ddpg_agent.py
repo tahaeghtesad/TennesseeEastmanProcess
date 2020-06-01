@@ -1,5 +1,8 @@
 from stable_baselines import DDPG
 import numpy as np
+import sys
+import os
+from tqdm import tqdm
 
 
 class DDPGWrapper(DDPG):
@@ -27,3 +30,25 @@ class DDPGWrapperHistory(DDPG):
             return super().predict(np.array(self.history).flatten(), state, mask, deterministic)[0]
         except ValueError:
             return super().predict(np.array(self.history)[:, :self.observation_dim].flatten(), state, mask, deterministic)[0]
+
+
+class MixedStrategyDDPG:
+
+    def __init__(self, path, count, probabilities, history=True):
+        assert len(probabilities) == count
+        self.probabilities = probabilities / probabilities.sum()
+        self.count = count
+        self.policies = []
+
+        for i in tqdm(range(count)):
+            # print(f'Loading Policy {path}-{i}')
+            sys.stdout = open(os.devnull, "w")
+            if history:
+                self.policies.append(DDPGWrapperHistory.load(f'{path}-{i}'))
+            else:
+                self.policies.append(DDPGWrapper.load(f'{path}-{i}'))
+            sys.stdout = sys.__stdout__
+
+
+    def predict(self, observation, state=None, mask=None, deterministic=True):
+        return np.random.choice(self.policies, p=self.probabilities).predict(observation, state, mask, deterministic)

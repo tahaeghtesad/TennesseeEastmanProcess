@@ -10,6 +10,7 @@ class ThreeTank(gym.Env):
 
     def __init__(self, noise=True, proximity=0.01) -> None:
         super().__init__()
+        self.proximity = proximity
         self.logger = logging.getLogger(__class__.__name__)
         self.x = np.array([0., 0., 0.0])
 
@@ -55,7 +56,7 @@ class ThreeTank(gym.Env):
 
         win = False
         reward = -np.linalg.norm(self.x - self.goal)
-        if np.linalg.norm(self.x - self.goal) < 0.01:
+        if np.linalg.norm(self.x - self.goal) < self.proximity:
             reward += 100
             win = True
 

@@ -5,7 +5,7 @@ import tensorflow as tf
 from stable_baselines import *
 from stable_baselines.ddpg.policies import LnMlpPolicy
 import gym_control
-from agents.ddpg_agent import DDPGWrapperHistory, DDPGWrapper
+from agents.ddpg_agent import DDPGWrapperHistory, DDPGWrapper, MixedStrategyDDPG
 import math
 import nashpy as nash
 from os import listdir
@@ -77,10 +77,10 @@ class Trainer:
         model = DDPG(
             self.get_policy_class(self.layers, self.activation_function),
             gym.make('Historitized-v0', env=f'{self.env}Att-v0',
-                     defender=None,
+                     defender=MixedStrategyDDPG(f'params/defender', len(defender_choice), defender_choice),
                      compromise_actuation_prob=self.compromise_actuation_prob,
                      compromise_observation_prob=self.compromise_observation_prob,
-                     power=self.attacker_power),  # This is a dummy env
+                     power=self.attacker_power),
             verbose=1,
             random_exploration=self.exploration,
             gamma=self.gamma,
@@ -88,20 +88,10 @@ class Trainer:
             tensorboard_log='tb_logs'
         )
 
-        for i in range(len(defender_choice)):
-            if int(self.total_training_steps * defender_choice[i]) > 150:
-                env = gym.make('Historitized-v0', env=f'{self.env}Att-v0',
-                               defender=DDPGWrapperHistory.load(f'params/defender-{i}'),
-                               compromise_actuation_prob=self.compromise_actuation_prob,
-                               compromise_observation_prob=self.compromise_observation_prob,
-                               power=self.attacker_power)
-
-                model.set_env(env)
-
-                model.learn(total_timesteps=round(defender_choice[i] * self.total_training_steps),
-                            callback=callback,
-                            tb_log_name=f'Attacker-{i}'
-                            )
+        model.learn(total_timesteps=self.total_training_steps,
+                    callback=callback,
+                    tb_log_name=f'Attacker-{len(attacker_choice)}'
+                    )
 
         model.save(f'params/attacker-{len(attacker_choice)}')
 
@@ -116,9 +106,9 @@ class Trainer:
         model = DDPG(
             self.get_policy_class(self.layers, self.activation_function),
             gym.make('Historitized-v0', env=f'{self.env}Def-v0',
-                     attacker=None,
+                     attacker=MixedStrategyDDPG(f'params/attacker', len(attacker_choice), attacker_choice),
                      compromise_actuation_prob=self.compromise_actuation_prob,
-                     compromise_observation_prob=self.compromise_observation_prob),  # This is a dummy env
+                     compromise_observation_prob=self.compromise_observation_prob),
             verbose=1,
             random_exploration=self.exploration,
             gamma=self.gamma,
@@ -126,20 +116,10 @@ class Trainer:
             tensorboard_log='tb_logs'
         )
 
-        for i in range(len(attacker_choice)):
-            if int(self.total_training_steps * attacker_choice[i]) > 150:
-                env = gym.make('Historitized-v0', env=f'{self.env}Def-v0',
-                               attacker=DDPGWrapperHistory.load(f'params/attacker-{i}'),
-                               compromise_actuation_prob=self.compromise_actuation_prob,
-                               compromise_observation_prob=self.compromise_observation_prob
-                               )
-
-                model.set_env(env)
-
-                model.learn(total_timesteps=round(attacker_choice[i] * self.total_training_steps),
-                            callback=callback,
-                            tb_log_name=f'Defender-{i}'
-                            )
+        model.learn(total_timesteps=self.total_training_steps,
+                    callback=callback,
+                    tb_log_name=f'Defender-{len(defender_choice)}'
+                    )
 
         model.save(f'params/defender-{len(defender_choice)}')
 
@@ -202,7 +182,7 @@ class Trainer:
         self.attacker_payoff_table = np.load('tb_logs/attacker_payoff.npy')
         self.defender_payoff_table = np.load('tb_logs/defender_payoff.npy')
 
-    def evaluate(self, attacker, defender, episodes=10):
+    def evaluate(self, attacker, defender, episodes=50):
         env = gym.make('Historitized-v0', env=f'{self.env}Att-v0',
                        defender=DDPGWrapperHistory.load(f'params/{defender}'),
                        compromise_actuation_prob=self.compromise_actuation_prob,
