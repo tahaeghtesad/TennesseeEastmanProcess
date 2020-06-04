@@ -11,7 +11,7 @@ if __name__ == '__main__':
     r = []
 
     with open(path) as input_file:
-        with open('smoothed.csv', 'w') as output_file:
+        with open('../smoothed.csv', 'w') as output_file:
             reader = csv.reader(input_file)
             writer = csv.writer(output_file)
 

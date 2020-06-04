@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 from trainer import Trainer
 import random
 
+prefix = '..'
+
 no_attack_x = [[], [], []]
 no_defense_x = [[], [], []]
 defense_x = [[], [], []]
@@ -21,14 +23,14 @@ compromise_observation_prob = .5
 def main(writer):
 
     trainer = Trainer(None, None)
-    defender_payoff = np.load('defender_payoff.npy')
+    defender_payoff = np.load(f'{prefix}/defender_payoff.npy')
     sa = trainer.find_zero_sum_mixed_ne(-defender_payoff.transpose())
     print(f'sa = {sa}')
     sd = trainer.find_zero_sum_mixed_ne(defender_payoff)
     print(f'sd = {sd}')
 
     no_attack_env = gym.make('Historitized-v0', env='BRPAtt-v0',
-                             defender=DDPGWrapperHistory.load('params/defender-0.zip'),
+                             defender=DDPGWrapperHistory.load(f'{prefix}/params/defender-0.zip'),
                              compromise_actuation_prob=compromise_actuation_prob,
                              compromise_observation_prob=compromise_observation_prob,
                              power=.3
@@ -36,22 +38,22 @@ def main(writer):
 
 
     no_defense_env = gym.make('Historitized-v0', env='BRPAtt-v0',
-                              defender=DDPGWrapperHistory.load('params/defender-0.zip'),
+                              defender=DDPGWrapperHistory.load(f'{prefix}/params/defender-0.zip'),
                               compromise_actuation_prob=compromise_actuation_prob,
                               compromise_observation_prob=compromise_observation_prob,
                               power=.3
                               )
 
     defense_env = gym.make('Historitized-v0', env='BRPAtt-v0',
-                           defender=MixedStrategyDDPG('params/defender', len(sd), sd),
+                           defender=MixedStrategyDDPG(f'{prefix}/params/defender', len(sd), sd),
                            compromise_actuation_prob=compromise_actuation_prob,
                            compromise_observation_prob=compromise_observation_prob,
                            power=.3
                            )
 
-    attacker = MixedStrategyDDPG('params/attacker', len(sa), sa, False)
+    attacker = MixedStrategyDDPG(f'{prefix}/params/attacker', len(sa), sa, False)
     # no_defense_attacker = DDPGWrapper.load(f'params/attacker-{np.argmax(defender_payoff[0, :])}.zip')
-    no_defense_attacker = DDPGWrapper.load(f'params/attacker-0')
+    no_defense_attacker = DDPGWrapper.load(f'{prefix}/params/attacker-0')
 
     no_attack_obs = no_attack_env.reset()
     no_defense_obs = no_defense_env.reset()
@@ -110,7 +112,7 @@ def main(writer):
 
 
 if __name__ == '__main__':
-    with open('compare.csv', 'w') as file:
+    with open(f'{prefix}/compare.csv', 'w') as file:
         writer = csv.writer(file)
         writer.writerow(['step',
                          'no_attack_0',

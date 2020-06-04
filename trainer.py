@@ -41,8 +41,10 @@ class Trainer:
                  gamma=.9,
                  tb_log=True,
                  exploration=.1,
-                 attacker_power=.3):
+                 attacker_power=.3,
+                 history=False):
         # Columns are attackers, rows are defenders
+        self.history = history
         self.attacker_power = attacker_power
         self.exploration = exploration
         self.compromise_observation_prob = compromise_observation_prob
@@ -80,6 +82,11 @@ class Trainer:
                      defender=MixedStrategyDDPG(f'params/defender', len(defender_choice), defender_choice),
                      compromise_actuation_prob=self.compromise_actuation_prob,
                      compromise_observation_prob=self.compromise_observation_prob,
+                     power=self.attacker_power) if self.history else
+            gym.make(f'{self.env}Att-v0',
+                     defender=MixedStrategyDDPG(f'params/defender', len(defender_choice), defender_choice, history=self.history),
+                     compromise_actuation_prob=self.compromise_actuation_prob,
+                     compromise_observation_prob=self.compromise_observation_prob,
                      power=self.attacker_power),
             verbose=1,
             random_exploration=self.exploration,
@@ -108,7 +115,12 @@ class Trainer:
             gym.make('Historitized-v0', env=f'{self.env}Def-v0',
                      attacker=MixedStrategyDDPG(f'params/attacker', len(attacker_choice), attacker_choice),
                      compromise_actuation_prob=self.compromise_actuation_prob,
-                     compromise_observation_prob=self.compromise_observation_prob),
+                     compromise_observation_prob=self.compromise_observation_prob) if self.history else
+            gym.make(f'{self.env}Att-v0',
+                     defender=MixedStrategyDDPG(f'params/defender', len(defender_choice), defender_choice, history=self.history),
+                     compromise_actuation_prob=self.compromise_actuation_prob,
+                     compromise_observation_prob=self.compromise_observation_prob,
+                     power=self.attacker_power),
             verbose=1,
             random_exploration=self.exploration,
             gamma=self.gamma,
@@ -133,7 +145,7 @@ class Trainer:
     def bootstrap_defender(self):
         model = DDPG(
             self.get_policy_class(self.layers, self.activation_function),
-            env=gym.make('Historitized-v0', env=f'{self.env}-v0'),
+            env=gym.make('Historitized-v0', env=f'{self.env}-v0') if self.history else gym.make(f'{self.env}-v0'),
             verbose=1,
             random_exploration=self.exploration,
             gamma=self.gamma,
@@ -155,7 +167,12 @@ class Trainer:
                          defender=DDPGWrapperHistory.load(f'params/defender-0'),
                          compromise_actuation_prob=self.compromise_actuation_prob,
                          compromise_observation_prob=self.compromise_observation_prob,
-                         power=.3),
+                         power=.3) if self.history else
+            gym.make(f'{self.env}Att-v0',
+                     defender=DDPGWrapper.load(f'params/defender-0'),
+                     compromise_actuation_prob=self.compromise_actuation_prob,
+                     compromise_observation_prob=self.compromise_observation_prob,
+                     power=self.attacker_power),
             verbose=1,
             random_exploration=self.exploration,
             gamma=self.gamma,
@@ -187,7 +204,12 @@ class Trainer:
                        defender=DDPGWrapperHistory.load(f'params/{defender}'),
                        compromise_actuation_prob=self.compromise_actuation_prob,
                        compromise_observation_prob=self.compromise_observation_prob,
-                       power=.3)
+                       power=.3)  if self.history else\
+            gym.make(f'{self.env}Att-v0',
+                     defender=DDPGWrapper.load(f'params/{defender}'),
+                     compromise_actuation_prob=self.compromise_actuation_prob,
+                     compromise_observation_prob=self.compromise_observation_prob,
+                     power=self.attacker_power)
         attacker_model = DDPGWrapper.load(f'params/{attacker}')
 
         episode_reward = 0

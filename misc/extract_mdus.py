@@ -4,7 +4,7 @@ from trainer import Trainer
 
 def main():
     trainer = Trainer(None, None)
-    defender_payoff_table = np.load('defender_payoff.npy')
+    defender_payoff_table = np.load('../defender_payoff.npy')
 
     for i in range(1, defender_payoff_table.shape[0]):
         pt = defender_payoff_table[:i, :i]
