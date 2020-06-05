@@ -7,7 +7,10 @@ from tqdm import tqdm
 
 class DDPGWrapper(DDPG):
     def predict(self, observation, state=None, mask=None, deterministic=True):
-        return super().predict(observation, state, mask, deterministic)[0]
+        try:
+            return super().predict(observation, state, mask, deterministic)[0]
+        except ValueError:
+            return super().predict(observation[:2], state, mask, deterministic)[0]
 
 
 class DDPGWrapperHistory(DDPG):

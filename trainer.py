@@ -116,11 +116,10 @@ class Trainer:
                      attacker=MixedStrategyDDPG(f'params/attacker', len(attacker_choice), attacker_choice),
                      compromise_actuation_prob=self.compromise_actuation_prob,
                      compromise_observation_prob=self.compromise_observation_prob) if self.history else
-            gym.make(f'{self.env}Att-v0',
-                     defender=MixedStrategyDDPG(f'params/defender', len(defender_choice), defender_choice, history=self.history),
+            gym.make(f'{self.env}Def-v0',
+                     attacker=MixedStrategyDDPG(f'params/attacker', len(attacker_choice), attacker_choice, history=self.history),
                      compromise_actuation_prob=self.compromise_actuation_prob,
-                     compromise_observation_prob=self.compromise_observation_prob,
-                     power=self.attacker_power),
+                     compromise_observation_prob=self.compromise_observation_prob),
             verbose=1,
             random_exploration=self.exploration,
             gamma=self.gamma,
@@ -204,7 +203,7 @@ class Trainer:
                        defender=DDPGWrapperHistory.load(f'params/{defender}'),
                        compromise_actuation_prob=self.compromise_actuation_prob,
                        compromise_observation_prob=self.compromise_observation_prob,
-                       power=.3)  if self.history else\
+                       power=.3) if self.history else\
             gym.make(f'{self.env}Att-v0',
                      defender=DDPGWrapper.load(f'params/{defender}'),
                      compromise_actuation_prob=self.compromise_actuation_prob,
