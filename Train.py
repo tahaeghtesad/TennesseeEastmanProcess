@@ -16,9 +16,9 @@ if __name__ == '__main__':
     fileHandler.setFormatter(logFormatter)
     rootLogger.addHandler(fileHandler)
 
-    trainer = Trainer(total_training_steps=500 * 1000, env='BRP', exploration=.01)
+    trainer = Trainer(total_training_steps=500 * 1000, env='BRP', exploration=.01, history=True)
 
-    cont = False
+    cont = True
 
     if not cont:
         rootLogger.info('Bootstrapping Defender...')
