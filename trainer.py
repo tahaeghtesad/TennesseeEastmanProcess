@@ -195,8 +195,8 @@ class Trainer:
         np.save('defender_payoff', self.defender_payoff_table)
 
     def load_tables(self):
-        self.attacker_payoff_table = np.load('tb_logs/attacker_payoff.npy')
-        self.defender_payoff_table = np.load('tb_logs/defender_payoff.npy')
+        self.attacker_payoff_table = np.load('./attacker_payoff.npy')
+        self.defender_payoff_table = np.load('./defender_payoff.npy')
 
     def evaluate(self, attacker, defender, episodes=50):
         env = gym.make('Historitized-v0', env=f'{self.env}Att-v0',
