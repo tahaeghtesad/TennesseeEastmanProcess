@@ -16,23 +16,32 @@ if __name__ == '__main__':
     fileHandler.setFormatter(logFormatter)
     rootLogger.addHandler(fileHandler)
 
-    trainer = Trainer(total_training_steps=250 * 1000, env='BRP', exploration=.01)
+    trainer = Trainer(total_training_steps=1 * 1000, env='BRP', exploration=.01)
 
-    rootLogger.info('Bootstrapping Defender...')
-    trainer.bootstrap_defender()
+    cont = False
 
-    rootLogger.info('Bootstrapping Attacker...')
-    trainer.bootstrap_attacker()
+    if cont:
+        rootLogger.info('Bootstrapping Defender...')
+        trainer.bootstrap_defender()
 
-    rootLogger.info('Initializing the payoff table...')
-    au, du = trainer.evaluate('attacker-0', 'defender-0')
+        rootLogger.info('Bootstrapping Attacker...')
+        trainer.bootstrap_attacker()
 
-    trainer.attacker_payoff_table = np.array([[au]])
-    trainer.defender_payoff_table = np.array([[du]])
+        rootLogger.info('Initializing the payoff table...')
+        au, du = trainer.evaluate('attacker-0', 'defender-0')
+
+        trainer.attacker_payoff_table = np.array([[au]])
+        trainer.defender_payoff_table = np.array([[du]])
+
+        iteration = 1
+    else:
+        rootLogger.info('Loading previous payoff tables... ')
+        trainer.load_tables()
+        iteration = min(trainer.defender_payoff_table.shape[0], trainer.defender_payoff_table.shape[1])
+        trainer.defender_payoff_table = trainer.defender_payoff_table[:iteration+1, :iteration+1]
+        trainer.attacker_payoff_table = trainer.attacker_payoff_table[:iteration+1, :iteration+1]
 
     rootLogger.info(f'Initial payoff table: {trainer.attacker_payoff_table, trainer.defender_payoff_table}')
-
-    iteration = 1
 
     try:
         while True:
