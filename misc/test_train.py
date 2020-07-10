@@ -5,7 +5,7 @@ trainer.bootstrap_defender()
 
 
 # import gym
-# import gym_control
+# import control
 #
 # env = gym.make('Historitized-v0', env='BRP-v0')
 # obs = env.reset()

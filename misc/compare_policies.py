@@ -1,4 +1,4 @@
-from agents.ddpg_agent import DDPGWrapper, DDPGWrapperHistory, MixedStrategyDDPG
+from agents.RLAgents import DDPGWrapper, DDPGWrapperHistory, MixedStrategyDDPG
 import gym
 import gym.envs
 import numpy as np
@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from trainer import Trainer
 import random
 
-prefix = '..'
+prefix = '.'
 
 no_attack_x = [[], [], []]
 no_defense_x = [[], [], []]
@@ -16,8 +16,8 @@ defense_x = [[], [], []]
 
 desired_x = [[], [], []]
 
-compromise_actuation_prob = .5
-compromise_observation_prob = .5
+compromise_actuation_prob = 0
+compromise_observation_prob = 1
 
 
 def main(writer):

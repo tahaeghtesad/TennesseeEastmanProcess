@@ -1,5 +1,5 @@
 import gym
-import gym_control
+import envs
 import numpy as np
 
 
