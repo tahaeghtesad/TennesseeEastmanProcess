@@ -3,6 +3,7 @@ appnope==0.1.0
 astor==0.8.0
 atari-py==0.2.6
 backcall==0.2.0
+click==7.1.2
 cloudpickle==1.2.2
 cycler==0.10.0
 Cython==0.29.20
