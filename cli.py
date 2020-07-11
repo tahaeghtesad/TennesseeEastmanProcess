@@ -27,7 +27,7 @@ def init_logger(prefix, index):
     return rootLogger
 
 
-def do_mtd(prefix, index, params):
+def do_mtd(prefix, index, params, max_iter):
     if not os.path.exists(f'{prefix}'):
         os.makedirs(f'{prefix}')
     if not os.path.exists(f'{prefix}/{index}'):
@@ -67,7 +67,7 @@ def do_mtd(prefix, index, params):
     logger.info(f'Attacker Heuristics: {attacker_iteration}')
     logger.info(f'Defender Heuristics: {defender_iteration}')
 
-    while attacker_iteration < params['max_iter'] or defender_iteration < params['max_iter']:
+    while attacker_iteration < max_iter or defender_iteration < max_iter:
         #Train Attacker
         logger.info(f'Training Attacker {attacker_iteration}')
         _, defender_strategy = find_general_sum_mixed_ne(trainer.attacker_payoff_table,
@@ -141,7 +141,6 @@ def run_mtd(prefix, index,
     params = {
         'training_steps': training_steps,
         'concurrent_runs': concurrent_runs,
-        'max_iter': max_iter,
         'env_params': {
             'm': env_params_m,
             'utenv': env_params_utenv,
@@ -165,7 +164,7 @@ def run_mtd(prefix, index,
             'normalization': policy_params_normalization
         }
     }
-    do_mtd(prefix, index, params)
+    do_mtd(prefix, index, params, max_iter)
 
 
 if __name__ == '__main__':
