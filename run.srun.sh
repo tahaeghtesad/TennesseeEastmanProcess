@@ -15,5 +15,6 @@ module load Anaconda3/python-3.6
 
 conda activate tep
 cd /project/laszka/TennesseeEastmanProcess/
+export PATH=$PWD/gambit:$PATH
 
 python cli.py "$@"
