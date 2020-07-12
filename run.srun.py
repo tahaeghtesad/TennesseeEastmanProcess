@@ -8,11 +8,11 @@ def run(params):
     return 0
 
 
-utenvs = [0, 1, 2, 3]
-settings = [0, 1, 2, 3]
-cas = [0.00, 0.05, 0.2, 0.5]
-downtimes = [1, 4, 7, 10]
-alphas = [0.01, 0.05, 0.1]
+utenvs = ['0', '1', '2', '3']
+settings = ['0', '1', '2', '3']
+cas = ['0.00', '0.05', '0.2', '0.5']
+downtimes = ['1', '4', '7', '10']
+alphas = ['0.01', '0.05', '0.1']
 
 params = [
     '--prefix',
@@ -49,9 +49,9 @@ if __name__ == '__main__':
                     for utenv in utenvs:
                         run(['--prefix', 'runs',
                              '--index', index,
-                             '--training_steps', 500000,
-                             '--concurrent_runs', 8,
-                             '--max_iter', 20,
+                             '--training_steps', '500000',
+                             '--concurrent_runs', '8',
+                             '--max_iter', '20',
                              '--env_params_alpha', alpha,
                              '--env_params_downtime', downtime,
                              '--env_params_ca', ca,
