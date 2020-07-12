@@ -48,7 +48,7 @@ if __name__ == '__main__':
                 for setting in settings:
                     for utenv in utenvs:
                         run(['--prefix', 'runs',
-                             '--index', index,
+                             '--index', str(index),
                              '--training_steps', '500000',
                              '--concurrent_runs', '8',
                              '--max_iter', '20',
