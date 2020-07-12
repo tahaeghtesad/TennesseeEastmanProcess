@@ -9,7 +9,7 @@ def run(params):
 
 
 utenvs = ['0', '1', '2', '3']
-settings = ['0', '1', '2', '3']
+settings = ['0', '1', '2']
 cas = ['0.00', '0.05', '0.2', '0.5']
 downtimes = ['1', '4', '7', '10']
 alphas = ['0.01', '0.05', '0.1']
@@ -42,19 +42,40 @@ if __name__ == '__main__':
 
     index = 1
 
-    for alpha in alphas:
-        for downtime in downtimes:
-            for ca in cas:
-                for setting in settings:
-                    for utenv in utenvs:
-                        run(['--prefix', 'runs',
-                             '--index', str(index),
-                             '--training_steps', '500000',
-                             '--concurrent_runs', '8',
-                             '--max_iter', '20',
-                             '--env_params_alpha', alpha,
-                             '--env_params_downtime', downtime,
-                             '--env_params_ca', ca,
-                             '--env_params_setting', setting,
-                             '--env_params_utenv', utenv])
-                        index += 1
+    runs = [
+        [0.05, 7, 0.0, 0, 0],
+        [0.05, 7, 0.0, 1, 0],
+        [0.05, 7, 0.0, 2, 0],
+        [0.05, 7, 0.0, 0, 1],
+        [0.05, 7, 0.0, 0, 2],
+        [0.05, 7, 0.0, 0, 3],
+        [0.05, 7, 0.1, 0, 0],
+        [0.05, 7, 0.1, 1, 0],
+        [0.05, 7, 0.1, 2, 0],
+        [0.05, 7, 0.1, 0, 1],
+        [0.05, 7, 0.1, 0, 2],
+        [0.05, 7, 0.1, 0, 3],
+
+        [0.1, 7, 0.1, 0, 0],
+        [0.1, 7, 0.1, 0, 1],
+        [0.1, 7, 0.1, 0, 2],
+        [0.1, 7, 0.1, 0, 3],
+
+        [0.05, 3, 0.1, 0, 0],
+        [0.05, 3, 0.1, 0, 1],
+        [0.05, 3, 0.1, 0, 2],
+        [0.05, 3, 0.1, 0, 3],
+    ]
+
+    for config in runs:
+        run(['--prefix', 'runs',
+             '--index', str(index),
+             '--training_steps', '500000',
+             '--concurrent_runs', '8',
+             '--max_iter', '20',
+             '--env_params_alpha', str(config[0]),
+             '--env_params_downtime', str(config[1]),
+             '--env_params_ca', str(config[2]),
+             '--env_params_setting', str(config[3]),
+             '--env_params_utenv', str(config[4])])
+        index += 1
