@@ -13,6 +13,7 @@
 ##module load Anaconda3/python-3.6
 ###module load cuDNN/7.5.0-CUDA-10.0.130
 
+source /home/${USER}/.bashrc
 conda activate tep
 cd /project/laszka/TennesseeEastmanProcess/
 export PATH=$PWD/gambit-project/:$PATH
