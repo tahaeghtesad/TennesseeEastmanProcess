@@ -4,8 +4,8 @@
 #SBATCH -t 24:00:00
 #SBATCH -N 1 -n 8
 #SBATCH --mem 16GB
-##SBATCH -p gpu
-##SBATCH --gres=gpu:1
+#SBATCH -p gpu
+#SBATCH --gres=gpu:1
 
 #SBATCH -A laszka
 
