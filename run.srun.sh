@@ -2,10 +2,10 @@
 
 #SBATCH -J TEP
 #SBATCH -t 24:00:00
-#SBATCH -N 2 -n 28
+#SBATCH -N 1 -n 14
 #SBATCH --mem 64GB
-##SBATCH -p gpu
-##SBATCH --gres=gpu:1
+#SBATCH -p gpu
+#SBATCH --gres=gpu:1
 
 #SBATCH -A laszka
 
