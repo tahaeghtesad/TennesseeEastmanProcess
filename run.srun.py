@@ -64,7 +64,7 @@ if __name__ == '__main__':
         run(['--prefix', 'runs',
              '--index', str(index),
              '--training_steps', '500000',
-             '--concurrent_runs', '2',
+             '--concurrent_runs', '1',
              '--max_iter', '20',
              '--env_params_alpha', str(config[0]),
              '--env_params_downtime', str(config[1]),
@@ -75,5 +75,5 @@ if __name__ == '__main__':
              '--policy_params_dueling', 'False',
              '--rl_params_prioritized_replay', 'False',
              '--policy_params_normalization', 'True',
-             '--policy_params_layers', '16, 8'])
+             '--policy_params_layers', '32, 32'])
         index += 1
