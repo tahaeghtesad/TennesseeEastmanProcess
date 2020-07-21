@@ -17,7 +17,7 @@ clean:
 
 run:
 		#module load Anaconda3/python-3.6
-		python run.srun.sh
+		python run.srun.py
 
 stop:
 		scancel -n TEP
