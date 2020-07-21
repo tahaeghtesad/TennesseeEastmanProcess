@@ -75,5 +75,5 @@ if __name__ == '__main__':
              '--policy_params_dueling', 'False',
              '--rl_params_prioritized_replay', 'False',
              '--policy_params_normalization', 'True',
-             '--policy_params_layers', '"16, 8"'])
+             '--policy_params_layers', '16, 8'])
         index += 1
