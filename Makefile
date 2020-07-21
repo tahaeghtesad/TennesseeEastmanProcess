@@ -14,6 +14,7 @@ clean:
 	@echo 'Are you sure? Sleeping for 15 seconds in case you changed your mind!' | cowsay
 	@sleep 15
 	rm -rf runs
+	rm -rf slurm*
 
 run:
 		#module load Anaconda3/python-3.6
