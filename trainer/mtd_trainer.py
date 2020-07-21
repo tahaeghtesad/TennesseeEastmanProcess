@@ -1,3 +1,5 @@
+import logging
+
 from agents.RLAgents import Agent, SimpleWrapperAgent, MixedStrategyAgent
 from envs.mtd.processors import AttackerProcessor, DefenderProcessor
 from trainer.trainer import Trainer
@@ -12,31 +14,39 @@ from tqdm import tqdm
 
 class MTDTrainer(Trainer):
 
+    def __init__(self, prefix, training_steps, concurrent_runs=4, env_params=None, rl_params=None,
+                 policy_params=None) -> None:
+        super().__init__(prefix, training_steps, concurrent_runs, env_params, rl_params, policy_params)
+        self.logger = logging.getLogger(__name__)
+
     @staticmethod
     def callback(locals_, globals_):
-        self_ = locals_['self']
-
-        if 'action' in locals_:
-            summary = tf.Summary(value=[tf.Summary.Value(tag='game/actions', simple_value=locals_['action'])])
-            locals_['writer'].add_summary(summary, self_.num_timesteps)
-
-        if 'update_eps' in locals_:
-            summary = tf.Summary(value=[tf.Summary.Value(tag='input_info/eps', simple_value=locals_['update_eps'])])
-            locals_['writer'].add_summary(summary, self_.num_timesteps)
-
-        if 'info' in locals_:
-            summary = tf.Summary(
-                value=[tf.Summary.Value(tag='game/attacker_reward', simple_value=locals_['info']['rewards']['att'])])
-            locals_['writer'].add_summary(summary, self_.num_timesteps)
-
-            summary = tf.Summary(
-                value=[tf.Summary.Value(tag='game/defender_reward', simple_value=locals_['info']['rewards']['def'])])
-            locals_['writer'].add_summary(summary, self_.num_timesteps)
+        # self_ = locals_['self']
+        #
+        # if 'action' in locals_:
+        #     summary = tf.Summary(value=[tf.Summary.Value(tag='game/actions', simple_value=locals_['action'])])
+        #     locals_['writer'].add_summary(summary, self_.num_timesteps)
+        #
+        # if 'update_eps' in locals_:
+        #     summary = tf.Summary(value=[tf.Summary.Value(tag='input_info/eps', simple_value=locals_['update_eps'])])
+        #     locals_['writer'].add_summary(summary, self_.num_timesteps)
+        #
+        # if 'info' in locals_:
+        #     summary = tf.Summary(
+        #         value=[tf.Summary.Value(tag='game/attacker_reward', simple_value=locals_['info']['rewards']['att'])])
+        #     locals_['writer'].add_summary(summary, self_.num_timesteps)
+        #
+        #     summary = tf.Summary(
+        #         value=[tf.Summary.Value(tag='game/defender_reward', simple_value=locals_['info']['rewards']['def'])])
+        #     locals_['writer'].add_summary(summary, self_.num_timesteps)
 
         return True
 
     def get_policy_class(self, policy_params):
-        return LnMlpPolicy
+        class CustomPolicy(FeedForwardPolicy):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs, **policy_params, feature_extraction="mlp")
+        return CustomPolicy
 
     def initialize_strategies(self):
         attackers = [BaseAttacker, MaxProbeAttacker, UniformAttacker, ControlThresholdAttacker]
@@ -51,20 +61,20 @@ class MTDTrainer(Trainer):
         for i, attacker in enumerate(attackers):
             for j, defender in enumerate(defenders):
 
-                au, du = self.get_payoff(attacker(), defender())
+                au, du = self.get_payoff(attacker(m=self.env_params['m']), defender(m=self.env_params['m']))
                 self.defender_payoff_table[i, j] = du
                 self.attacker_payoff_table[i, j] = au
 
         for attacker in attackers:
-            attacker_ms.add_policy(attacker())
+            attacker_ms.add_policy(attacker(m=self.env_params['m']))
         for defender in defenders:
-            defender_ms.add_policy(defender())
+            defender_ms.add_policy(defender(m=self.env_params['m']))
 
         self.save_tables()
         return attacker_ms, defender_ms
 
     def train_attacker(self, defender, iteration, index) -> Agent:
-
+        self.logger.info(f'Starting attacker training for {self.training_steps} steps.')
         env = gym.make('MTDAtt-v0', **self.env_params,
                    defender=defender)
 
@@ -74,7 +84,7 @@ class MTDTrainer(Trainer):
             **self.rl_params,
             verbose=2,
             tensorboard_log=f'{self.prefix}/tb_logs',
-            full_tensorboard_log=True
+            # full_tensorboard_log=True
         )
 
         attacker_model.learn(
@@ -87,6 +97,7 @@ class MTDTrainer(Trainer):
         return SimpleWrapperAgent(attacker_model)
 
     def train_defender(self, attacker, iteration, index) -> Agent:
+        self.logger.info(f'Starting defender training for {self.training_steps} steps.')
         env = gym.make('MTDDef-v0', **self.env_params,
                        attacker=attacker)
         defender_model = DQN(
@@ -95,7 +106,7 @@ class MTDTrainer(Trainer):
             **self.rl_params,
             verbose=2,
             tensorboard_log=f'{self.prefix}/tb_logs',
-            full_tensorboard_log=True
+            # full_tensorboard_log=True
         )
 
         defender_model.learn(

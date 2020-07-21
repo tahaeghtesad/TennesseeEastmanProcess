@@ -49,6 +49,7 @@ class Trainer:
             for future in concurrent.futures.as_completed(futures):
                 attacker = future.result()
                 au, du = self.get_payoff(attacker, defender)
+                self.logger.info(f'An attacker is done with the training, payoffs: ({au}, {du})')
                 if au > best_util:
                     best_util = au
                     best = attacker
@@ -67,6 +68,7 @@ class Trainer:
             for future in concurrent.futures.as_completed(futures):
                 defender = future.result()
                 au, du = self.get_payoff(attacker, defender)
+                self.logger.info(f'A defender is done with the training, payoffs: ({au}, {du})')
                 if du > best_util:
                     best_util = du
                     best = defender

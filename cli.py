@@ -9,6 +9,7 @@ import tensorflow as tf
 from util.nash_helpers import find_general_sum_mixed_ne
 import json
 import os
+import copy
 
 
 def init_logger(prefix, index):
@@ -44,8 +45,8 @@ def do_mtd(prefix, index, params, max_iter):
     logger.info(f'{params}')
 
     with open(f'{prefix}/{index}/info.json', 'w') as fd:
-        params_back = params.copy()
-        params_back['policy_params']['activation'] = 'relu'
+        params_back = copy.deepcopy(params)
+        params_back['policy_params']['act_fun'] = params_back['policy_params']['act_fun'].__name__
         json.dump(params_back, fd)
 
     trainer = MTDTrainer(
@@ -137,7 +138,6 @@ def run_mtd(prefix, index,
             policy_params_layers,
             policy_params_dueling,
             policy_params_normalization):
-    # TODO policy_params has not been used.
     params = {
         'training_steps': training_steps,
         'concurrent_runs': concurrent_runs,
@@ -158,10 +158,10 @@ def run_mtd(prefix, index,
             'prioritized_replay': rl_params_prioritized_replay
         },
         'policy_params': {
-            'activation': getattr(tf.nn, policy_params_activation),
+            'act_fun': getattr(tf.nn, policy_params_activation),
             'layers': [int(l) for l in policy_params_layers.split(',')],
             'dueling': policy_params_dueling,
-            'normalization': policy_params_normalization
+            'layer_norm': policy_params_normalization
         }
     }
     do_mtd(prefix, index, params, max_iter)
