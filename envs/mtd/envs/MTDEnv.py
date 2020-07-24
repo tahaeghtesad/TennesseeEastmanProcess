@@ -148,6 +148,7 @@ class MovingTargetDefenceEnv(gym.Env):
         }
 
     def step(self, action: tuple):  # Action[0] is the attacker's move, Action[1] the defender's.
+        self.time += 1
         ### Onlining servers
 
         for i in range(self.m):
