@@ -116,7 +116,7 @@ def do_mtd(prefix, index, params, max_iter):
 @click.option('--rl_params_prioritized_replay', default=False, help='Prioritized Replay', show_default=True)
 @click.option('--policy_params_activation', default='relu', help='Activation Function', show_default=True)
 @click.option('--policy_params_layers', default='64, 64', help='MLP Network Layers', show_default=True)
-@click.option('--policy_params_dueling', default=False, help='Dueling MLP Network', show_default=True)
+@click.option('--policy_params_dueling', default=True, help='Dueling MLP Network', show_default=True)
 @click.option('--policy_params_normalization', default=True, help='Layer Normalization', show_default=True)
 def run_mtd(prefix, index,
             training_steps,
