@@ -16,7 +16,7 @@ class MixedStrategyAgent(Agent):
         self.policies = []
 
     def update_probabilities(self, probabilities):
-        self.probabilities = probabilities / sum(self.probabilities)
+        self.probabilities = probabilities / probabilities.sum()
 
     def add_policy(self, policy: Agent):
         self.policies.append(policy)
