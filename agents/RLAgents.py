@@ -22,8 +22,6 @@ class MixedStrategyAgent(Agent):
         self.policies.append(policy)
 
     def predict(self, observation, state=None, mask=None, deterministic=True):
-        assert len(self.probabilities) == len(self.policies)
-        assert sum(self.probabilities) == 1.
         return np.random.choice(self.policies, p=self.probabilities).predict(observation, state, mask, deterministic)
 
 
