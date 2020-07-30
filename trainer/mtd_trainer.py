@@ -87,11 +87,15 @@ class MTDTrainer(Trainer):
             full_tensorboard_log=self.tb_logging
         )
 
-        attacker_model.learn(
-            total_timesteps=self.training_steps,
-            callback=self.callback,
-            tb_log_name=f'attacker_{iteration}_{index}'
-        )
+        try:
+            attacker_model.learn(
+                total_timesteps=self.training_steps,
+                callback=self.callback,
+                tb_log_name=f'attacker_{iteration}_{index}'
+            )
+        except KeyboardInterrupt:
+            self.logger.info('Stopping attacker training...')
+
 
         attacker_model.save(f'{self.prefix}/params/attacker-{iteration}-{index}')
         return SimpleWrapperAgent(attacker_model)
@@ -109,11 +113,14 @@ class MTDTrainer(Trainer):
             full_tensorboard_log=self.tb_logging
         )
 
-        defender_model.learn(
-            total_timesteps=self.training_steps,
-            callback=self.callback,
-            tb_log_name=f'defender_{iteration}_{index}'
-        )
+        try:
+            defender_model.learn(
+                total_timesteps=self.training_steps,
+                callback=self.callback,
+                tb_log_name=f'defender_{iteration}_{index}'
+            )
+        except KeyboardInterrupt:
+            self.logger.info('Stopping defender training...')
 
         defender_model.save(f'{self.prefix}/params/defender-{iteration}-{index}')
         return SimpleWrapperAgent(defender_model)
