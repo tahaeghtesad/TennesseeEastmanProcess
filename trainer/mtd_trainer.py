@@ -15,8 +15,8 @@ from tqdm import tqdm
 class MTDTrainer(Trainer):
 
     def __init__(self, prefix, training_steps, concurrent_runs=4, env_params=None, rl_params=None,
-                 policy_params=None) -> None:
-        super().__init__(prefix, training_steps, concurrent_runs, env_params, rl_params, policy_params)
+                 policy_params=None, tb_logging=True) -> None:
+        super().__init__(prefix, training_steps, concurrent_runs, env_params, rl_params, policy_params, tb_logging)
         self.logger = logging.getLogger(__name__)
 
     @staticmethod
@@ -73,7 +73,7 @@ class MTDTrainer(Trainer):
         self.save_tables()
         return attacker_ms, defender_ms
 
-    def train_attacker(self, defender, iteration, index, tb_logging) -> Agent:
+    def train_attacker(self, defender, iteration, index) -> Agent:
         self.logger.info(f'Starting attacker training for {self.training_steps} steps.')
         env = gym.make('MTDAtt-v0', **self.env_params,
                    defender=defender)
@@ -83,8 +83,8 @@ class MTDTrainer(Trainer):
             env=env,
             **self.rl_params,
             verbose=2,
-            tensorboard_log=f'{self.prefix}/tb_logs' if tb_logging else None,
-            full_tensorboard_log=tb_logging
+            tensorboard_log=f'{self.prefix}/tb_logs' if self.tb_logging else None,
+            full_tensorboard_log=self.tb_logging
         )
 
         attacker_model.learn(
@@ -96,7 +96,7 @@ class MTDTrainer(Trainer):
         attacker_model.save(f'{self.prefix}/params/attacker-{iteration}-{index}')
         return SimpleWrapperAgent(attacker_model)
 
-    def train_defender(self, attacker, iteration, index, tb_logging) -> Agent:
+    def train_defender(self, attacker, iteration, index) -> Agent:
         self.logger.info(f'Starting defender training for {self.training_steps} steps.')
         env = gym.make('MTDDef-v0', **self.env_params,
                        attacker=attacker)
@@ -105,8 +105,8 @@ class MTDTrainer(Trainer):
             env=env,
             **self.rl_params,
             verbose=2,
-            tensorboard_log=f'{self.prefix}/tb_logs' if tb_logging else None,
-            full_tensorboard_log=tb_logging
+            tensorboard_log=f'{self.prefix}/tb_logs' if self.tb_logging else None,
+            full_tensorboard_log=self.tb_logging
         )
 
         defender_model.learn(

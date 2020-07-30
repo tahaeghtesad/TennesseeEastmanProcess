@@ -12,7 +12,9 @@ class Trainer:
                  concurrent_runs=4,
                  env_params=None,
                  rl_params=None,
-                 policy_params=None) -> None:
+                 policy_params=None,
+                 tb_logging=True) -> None:
+        self.tb_logging = tb_logging
         self.training_steps = training_steps
         self.policy_params = policy_params
         self.prefix = prefix
@@ -34,16 +36,16 @@ class Trainer:
     def get_policy_class(self, policy_params):
         raise NotImplementedError()
 
-    def train_attacker(self, defender, iteration, index, tb_logging) -> Agent:
+    def train_attacker(self, defender, iteration, index) -> Agent:
         raise NotImplementedError()
 
-    def train_defender(self, attacker, iteration, index, tb_logging) -> Agent:
+    def train_defender(self, attacker, iteration, index) -> Agent:
         raise NotImplementedError()
 
-    def train_attacker_parallel(self, defender: Agent, iteration, tb_logging=True) -> Agent:
+    def train_attacker_parallel(self, defender: Agent, iteration) -> Agent:
         import concurrent.futures
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.concurrent_runs) as executor:
-            futures = {executor.submit(self.train_attacker, defender, iteration, index, tb_logging): index for index in range(self.concurrent_runs)}
+            futures = {executor.submit(self.train_attacker, defender, iteration, index): index for index in range(self.concurrent_runs)}
 
             best_util = -np.inf
             best = None
@@ -59,10 +61,10 @@ class Trainer:
             best.save(f'{self.prefix}/attacker-{iteration}')
             return best
 
-    def train_defender_parallel(self, attacker: Agent, iteration, tb_logging=True) -> Agent:
+    def train_defender_parallel(self, attacker: Agent, iteration) -> Agent:
         import concurrent.futures
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.concurrent_runs) as executor:
-            futures = {executor.submit(self.train_defender, attacker, iteration, index, tb_logging): index for index in range(self.concurrent_runs)}
+            futures = {executor.submit(self.train_defender, attacker, iteration, index): index for index in range(self.concurrent_runs)}
 
             best_util = -np.inf
             best = None
