@@ -20,6 +20,8 @@ class Trainer:
         self.env_params = env_params
         self.rl_params = rl_params
 
+        # Attacker is the row player
+        # Defender is the column player
         self.attacker_payoff_table = np.array([[]])
         self.defender_payoff_table = np.array([[]])
 
@@ -32,16 +34,16 @@ class Trainer:
     def get_policy_class(self, policy_params):
         raise NotImplementedError()
 
-    def train_attacker(self, defender, iteration, index) -> Agent:
+    def train_attacker(self, defender, iteration, index, tb_logging) -> Agent:
         raise NotImplementedError()
 
-    def train_defender(self, attacker, iteration, index) -> Agent:
+    def train_defender(self, attacker, iteration, index, tb_logging) -> Agent:
         raise NotImplementedError()
 
-    def train_attacker_parallel(self, defender: Agent, iteration) -> Agent:
+    def train_attacker_parallel(self, defender: Agent, iteration, tb_logging=True) -> Agent:
         import concurrent.futures
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.concurrent_runs) as executor:
-            futures = {executor.submit(self.train_attacker, defender, iteration, index): index for index in range(self.concurrent_runs)}
+            futures = {executor.submit(self.train_attacker, defender, iteration, index, tb_logging): index for index in range(self.concurrent_runs)}
 
             best_util = -np.inf
             best = None
@@ -57,10 +59,10 @@ class Trainer:
             best.save(f'{self.prefix}/attacker-{iteration}')
             return best
 
-    def train_defender_parallel(self, attacker: Agent, iteration) -> Agent:
+    def train_defender_parallel(self, attacker: Agent, iteration, tb_logging=True) -> Agent:
         import concurrent.futures
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.concurrent_runs) as executor:
-            futures = {executor.submit(self.train_defender, attacker, iteration, index): index for index in range(self.concurrent_runs)}
+            futures = {executor.submit(self.train_defender, attacker, iteration, index, tb_logging): index for index in range(self.concurrent_runs)}
 
             best_util = -np.inf
             best = None

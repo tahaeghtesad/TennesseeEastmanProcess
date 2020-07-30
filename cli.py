@@ -75,7 +75,7 @@ def do_mtd(prefix, index, params, max_iter):
                                                          trainer.defender_payoff_table)
         logging.info(f'Defender MSNE: {defender_strategy}')
         defender_ms.update_probabilities(defender_strategy)
-        attacker_policy = trainer.train_attacker_parallel(defender_ms, attacker_iteration)
+        attacker_policy = trainer.train_attacker_parallel(defender_ms, attacker_iteration, params['tb_logging'])
         attacker_ms.add_policy(attacker_policy)
         payoffs = [trainer.get_payoff(attacker_policy, defender_policy) for defender_policy in defender_ms.policies]
         trainer.update_attacker_payoff_table(np.array([au for (au, du) in payoffs]), np.array([du for (au, du) in payoffs]))
@@ -88,7 +88,7 @@ def do_mtd(prefix, index, params, max_iter):
                                                          trainer.defender_payoff_table)
         logging.info(f'Attacker MSNE: {attacker_strategy}')
         attacker_ms.update_probabilities(attacker_strategy)
-        defender_policy = trainer.train_defender_parallel(attacker_ms, defender_iteration)
+        defender_policy = trainer.train_defender_parallel(attacker_ms, defender_iteration, params['tb_logging'])
         defender_ms.add_policy(defender_policy)
         payoffs = [trainer.get_payoff(attacker_policy, defender_policy) for attacker_policy in attacker_ms.policies]
         trainer.update_defender_payoff_table(np.array([au for (au, du) in payoffs]), np.array([du for (au, du) in payoffs]))
@@ -101,6 +101,7 @@ def do_mtd(prefix, index, params, max_iter):
 @click.option('--index', help='Index for this run', required=True)
 @click.option('--training_steps', default=500 * 1000, help='Number of training steps in each iteration of DO.', show_default=True)
 @click.option('--concurrent_runs', default=4, help='Number of concurrent runs', show_default=True)
+@click.option('--tb_logging', default=True, help='Whether to store Tensorboard logs', show_default=True)
 @click.option('--max_iter', default=15, help='Maximum iteration for DO.', show_default=True)
 @click.option('--env_params_m', default=10, help='Number of servers in game.', show_default=True)
 @click.option('--env_params_utenv', default=0, help='Utility Environment', show_default=True)
@@ -121,6 +122,7 @@ def do_mtd(prefix, index, params, max_iter):
 def run_mtd(prefix, index,
             training_steps,
             concurrent_runs,
+            tb_logging,
             max_iter,
             env_params_m,
             env_params_utenv,
@@ -141,6 +143,7 @@ def run_mtd(prefix, index,
     params = {
         'training_steps': training_steps,
         'concurrent_runs': concurrent_runs,
+        'tb_logging': tb_logging,
         'env_params': {
             'm': env_params_m,
             'utenv': env_params_utenv,

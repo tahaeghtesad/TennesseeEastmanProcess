@@ -7,33 +7,10 @@ def run(params):
     subprocess.run(['sbatch', 'run.srun.sh'] + params)
     return 0
 
-params = [
-    '--prefix',
-    '--index',
-    '--training_steps',
-    '--concurrent_runs',
-    '--max_iter',
-    '--env_params_m',
-    '--env_params_utenv',
-    '--env_params_setting',
-    '--env_params_ca',
-    '--env_params_downtime',
-    '--env_params_alpha',
-    '--env_params_probe_detection',
-    '--rl_params_exploration_fraction',
-    '--rl_params_exploration_final_eps',
-    '--rl_params_gamma',
-    '--rl_params_double_q',
-    '--rl_params_prioritized_replay',
-    '--policy_params_activation',
-    '--policy_params_layers',
-    '--policy_params_dueling',
-    '--policy_params_normalization'
-]
 
 if __name__ == '__main__':
 
-    index = 1
+    index = 21
 
     runs = [
         [0.05, 7, 0.05, 0, 0],
@@ -65,7 +42,8 @@ if __name__ == '__main__':
              '--index', str(index),
              '--training_steps', '400000',
              '--concurrent_runs', '1',
-             '--max_iter', '20',
+             '--tb_logging', 'False',
+             '--max_iter', '15',
              '--env_params_alpha', str(config[0]),
              '--env_params_downtime', str(config[1]),
              '--env_params_ca', str(config[2]),
