@@ -96,6 +96,12 @@ def do_mtd(prefix, index, params, max_iter):
         logging.info(f'MSNE Attacker vs New Defender Payoff: {trainer.get_payoff(attacker_ms, defender_policy)}')
 
 
+def to_bool(input):
+    if type(input) is bool:
+        return input
+    return input.lower() in ['true']
+
+
 @click.command()
 @click.option('--prefix', default='runs', help='Prefix folder of run results', show_default=True)
 @click.option('--index', help='Index for this run', required=True)
@@ -143,7 +149,7 @@ def run_mtd(prefix, index,
     params = {
         'training_steps': training_steps,
         'concurrent_runs': concurrent_runs,
-        'tb_logging': tb_logging,
+        'tb_logging': to_bool(tb_logging),
         'env_params': {
             'm': env_params_m,
             'utenv': env_params_utenv,
@@ -157,14 +163,14 @@ def run_mtd(prefix, index,
             'exploration_fraction': rl_params_exploration_fraction,
             'exploration_final_eps': rl_params_exploration_final_eps,
             'gamma': rl_params_gamma,
-            'double_q': rl_params_double_q,
+            'double_q': to_bool(rl_params_double_q),
             'prioritized_replay': rl_params_prioritized_replay
         },
         'policy_params': {
             'act_fun': getattr(tf.nn, policy_params_activation),
             'layers': [int(l) for l in policy_params_layers.split(',')],
-            'dueling': policy_params_dueling,
-            'layer_norm': policy_params_normalization
+            'dueling': to_bool(policy_params_dueling),
+            'layer_norm': to_bool(policy_params_normalization)
         }
     }
     do_mtd(prefix, index, params, max_iter)
