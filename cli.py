@@ -109,6 +109,7 @@ def to_bool(input):
 @click.option('--concurrent_runs', default=4, help='Number of concurrent runs', show_default=True)
 @click.option('--tb_logging', default=True, help='Whether to store Tensorboard logs', show_default=True)
 @click.option('--max_iter', default=15, help='Maximum iteration for DO.', show_default=True)
+@click.option('--include_heuristics', default=True, help='Whether to include the heuristics', show_default=True)
 @click.option('--env_params_m', default=10, help='Number of servers in game.', show_default=True)
 @click.option('--env_params_utenv', default=0, help='Utility Environment', show_default=True)
 @click.option('--env_params_setting', default=0, help='Environment Setting', show_default=True)
@@ -130,6 +131,7 @@ def run_mtd(prefix, index,
             concurrent_runs,
             tb_logging,
             max_iter,
+            include_heuristics,
             env_params_m,
             env_params_utenv,
             env_params_setting,
@@ -150,6 +152,7 @@ def run_mtd(prefix, index,
         'training_steps': training_steps,
         'concurrent_runs': concurrent_runs,
         'tb_logging': to_bool(tb_logging),
+        'include_heuristics': to_bool(include_heuristics),
         'env_params': {
             'm': env_params_m,
             'utenv': env_params_utenv,

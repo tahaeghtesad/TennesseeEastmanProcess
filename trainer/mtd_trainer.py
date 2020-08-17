@@ -14,10 +14,11 @@ from tqdm import tqdm
 
 class MTDTrainer(Trainer):
 
-    def __init__(self, prefix, training_steps, concurrent_runs=4, env_params=None, rl_params=None,
+    def __init__(self, prefix, training_steps, concurrent_runs=4, include_heuristics=True, env_params=None, rl_params=None,
                  policy_params=None, tb_logging=True) -> None:
         super().__init__(prefix, training_steps, concurrent_runs, env_params, rl_params, policy_params, tb_logging)
         self.logger = logging.getLogger(__name__)
+        self.include_heuristics = include_heuristics
 
     @staticmethod
     def callback(locals_, globals_):
@@ -49,26 +50,43 @@ class MTDTrainer(Trainer):
         return CustomPolicy
 
     def initialize_strategies(self):
-        attackers = [BaseAttacker, MaxProbeAttacker, UniformAttacker, ControlThresholdAttacker]
-        defenders = [BaseDefender, ControlThresholdDefender, PCPDefender, UniformDefender, MaxProbeDefender]
+        if self.include_heuristics:
+            attackers = [BaseAttacker, MaxProbeAttacker, UniformAttacker, ControlThresholdAttacker]
+            defenders = [BaseDefender, ControlThresholdDefender, PCPDefender, UniformDefender, MaxProbeDefender]
 
-        self.defender_payoff_table = np.zeros((4, 5))
-        self.attacker_payoff_table = np.zeros((4, 5))
+            self.defender_payoff_table = np.zeros((4, 5))
+            self.attacker_payoff_table = np.zeros((4, 5))
 
-        attacker_ms = MixedStrategyAgent()
-        defender_ms = MixedStrategyAgent()
+            attacker_ms = MixedStrategyAgent()
+            defender_ms = MixedStrategyAgent()
 
-        for i, attacker in enumerate(attackers):
-            for j, defender in enumerate(defenders):
+            for i, attacker in enumerate(attackers):
+                for j, defender in enumerate(defenders):
 
-                au, du = self.get_payoff(attacker(m=self.env_params['m']), defender(m=self.env_params['m']))
-                self.defender_payoff_table[i, j] = du
-                self.attacker_payoff_table[i, j] = au
+                    au, du = self.get_payoff(attacker(m=self.env_params['m']), defender(m=self.env_params['m']))
+                    self.defender_payoff_table[i, j] = du
+                    self.attacker_payoff_table[i, j] = au
 
-        for attacker in attackers:
-            attacker_ms.add_policy(attacker(m=self.env_params['m']))
-        for defender in defenders:
-            defender_ms.add_policy(defender(m=self.env_params['m']))
+            for attacker in attackers:
+                attacker_ms.add_policy(attacker(m=self.env_params['m']))
+            for defender in defenders:
+                defender_ms.add_policy(defender(m=self.env_params['m']))
+        else:
+            attacker = BaseAttacker(m=self.env_params['m'])
+            defender = BaseDefender(m=self.env_params['m'])
+
+            self.defender_payoff_table = np.zeros((1, 1))
+            self.attacker_payoff_table = np.zeros((1, 1))
+
+            attacker_ms = MixedStrategyAgent()
+            defender_ms = MixedStrategyAgent()
+
+            au, du = self.get_payoff(attacker, defender)
+            self.defender_payoff_table[0, 0] = du
+            self.attacker_payoff_table[0, 0] = au
+
+            attacker_ms.add_policy(attacker)
+            defender_ms.add_policy(defender)
 
         self.save_tables()
         return attacker_ms, defender_ms
