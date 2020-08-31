@@ -19,7 +19,8 @@ if __name__ == '__main__':
     ]
 
     for config in runs:
-        run(['--prefix', 'runs',
+        run(['mtd',
+             '--prefix', 'runs',
              '--index', str(index),
              '--training_steps', '400000',
              '--concurrent_runs', '1',
