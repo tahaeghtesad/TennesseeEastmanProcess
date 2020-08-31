@@ -132,7 +132,7 @@ class BioReactorAttacker(AdversarialBioReactor):  # This is a noise generator at
 
 class BioReactorDefender(AdversarialBioReactor):
 
-    def __init__(self, attacker, compromise_actuation_prob: float, compromise_observation_prob: float) -> None:
+    def __init__(self, attacker, compromise_actuation_prob: float, compromise_observation_prob: float, power: float = 0.3) -> None:
         super().__init__(compromise_actuation_prob, compromise_observation_prob)
         self.logger = logging.getLogger(__class__.__name__)
         self.attacker = attacker
@@ -143,8 +143,11 @@ class BioReactorDefender(AdversarialBioReactor):
         self.action_space = gym.spaces.Box(low=-np.array([10., 10.]),
                                            high=np.array([10., 10.]))
 
+        self.attacker_power = power
+
     def step(self, action: np.ndarray) -> Tuple[Any, float, bool, Dict]:
         attacker_action = self.attacker.predict(self.attacker_obs)
+        assert (-self.attacker_power <= attacker_action).all() and (attacker_action <= self.attacker_power).all()
         action_and_noise = action * (1. + attacker_action[self.env.observation_dim:] * self.compromise[self.env.observation_dim:])
 
         obs, reward, done, info = self.env.step(action_and_noise)

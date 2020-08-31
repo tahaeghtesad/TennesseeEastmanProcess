@@ -38,7 +38,7 @@ class SimpleWrapperAgent(Agent):
         return self.agent.save(save_path, cloudpickle)
 
 
-class HistoryAgent(Agent):
+class HistoryAgent(SimpleWrapperAgent):
 
     def __init__(self, agent: [Agent, BaseRLModel], observation_dim=2, history_length=12) -> None:
         super().__init__(agent)
@@ -53,9 +53,4 @@ class HistoryAgent(Agent):
             self.history = [observation] * self.history_length
         if len(self.history) > self.history_length:
             del self.history[0]
-        try:
-            return self.agent.predict(np.array(self.history).flatten(), state, mask, deterministic)
-        except ValueError:
-            return \
-                self.agent.predict(np.array(self.history)[:, :self.observation_dim].flatten(), state, mask,
-                                   deterministic)[0]
+        return self.agent.predict(np.array(self.history).flatten(), state, mask, deterministic)[0]
