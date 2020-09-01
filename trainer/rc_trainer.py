@@ -100,7 +100,7 @@ class RCTrainer(Trainer):
             policy=self.get_policy_class(self.policy_params),
             env=env,
             **self.rl_params,
-            verbose=2,
+            verbose=1,
             tensorboard_log=f'{self.prefix}/tb_logs' if self.tb_logging else None,
             full_tensorboard_log=self.tb_logging
         )
@@ -133,7 +133,7 @@ class RCTrainer(Trainer):
                 r += reward * self.rl_params['gamma'] ** iter
                 iter += 1
 
-        return r / repeat, -r / repeat
+        return -r / repeat, r / repeat
 
     def initialize_strategies(self):
         attacker = self.NoOpAgent(4)  #TODO this should not be a constant 4
