@@ -196,6 +196,7 @@ def do_mtd(prefix, index,
 @click.option('--env_params_compromise_actuation_prob', default=0.5, help='Actuation compromise probability')
 @click.option('--env_params_compromise_observation_prob', default=0.5, help='Observation compromise probability')
 @click.option('--env_params_power', default=0.3, help='Power of attacker')
+@click.option('--env_params_noise', default=True, help='Whether to include noise to the env')
 @click.option('--rl_params_random_exploration', default=0.1, help='Exploration Fraction', show_default=True)
 @click.option('--rl_params_gamma', default=0.90, help='Gamma', show_default=True)
 @click.option('--policy_params_activation', default='tanh', help='Activation Function', show_default=True)
@@ -212,17 +213,19 @@ def do_rc(env_id, prefix, index,
           policy_params_layers,
           env_params_compromise_actuation_prob,
           env_params_compromise_observation_prob,
-          env_params_power):
+          env_params_power,
+          env_params_noise):
     params = {
         'env_id': env_id,
         'training_steps': training_steps,
         'concurrent_runs': concurrent_runs,
         'tb_logging': to_bool(tb_logging),
-        'observation_history': observation_history,
+        'observation_history': to_bool(observation_history),
         'env_params': {
             'compromise_actuation_prob': env_params_compromise_actuation_prob,
             'compromise_observation_prob': env_params_compromise_observation_prob,
-            'power': env_params_power
+            'power': env_params_power,
+            'noise': to_bool(env_params_noise)
         },
         'rl_params': {
             'random_exploration': rl_params_random_exploration,
