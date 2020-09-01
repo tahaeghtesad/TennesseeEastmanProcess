@@ -8,6 +8,7 @@ from agents.RLAgents import Agent, SimpleWrapperAgent, MixedStrategyAgent, Histo
 from trainer.trainer import Trainer
 import tensorflow as tf
 import numpy as np
+import logging
 
 
 class RCTrainer(Trainer):
@@ -15,6 +16,7 @@ class RCTrainer(Trainer):
     def __init__(self, prefix, training_steps, env_id, concurrent_runs=4, env_params=None, rl_params=None, policy_params=None,
                  tb_logging=True, observation_history=True) -> None:
         super().__init__(prefix, training_steps, concurrent_runs, env_params, rl_params, policy_params, tb_logging)
+        self.logger = logging.getLogger(__name__)
         self.env_id = env_id
         self.observation_history = observation_history
 
@@ -29,17 +31,17 @@ class RCTrainer(Trainer):
 
     @staticmethod
     def callback(locals_, globals_):
-        # self_ = locals_['self']
-        #
-        # variables = ['u', 'x', 'dx', 'a', 'o']
-        #
-        # if 'info' in locals_ and 'writer' in locals_ and locals_['writer'] is not None:
-        #     for var in variables:
-        #         if var in locals_['info']:
-        #             for i in range(len(locals_['info'][var])):
-        #                 summary = tf.Summary(
-        #                     value=[tf.Summary.Value(tag=f'env/{var}{i}', simple_value=locals_['info'][var][i])])
-        #                 locals_['writer'].add_summary(summary, self_.num_timesteps)
+        self_ = locals_['self']
+
+        variables = ['u', 'x', 'dx', 'a', 'o']
+
+        if 'info' in locals_ and 'writer' in locals_ and locals_['writer'] is not None:
+            for var in variables:
+                if var in locals_['info']:
+                    for i in range(len(locals_['info'][var])):
+                        summary = tf.Summary(
+                            value=[tf.Summary.Value(tag=f'env/{var}{i}', simple_value=locals_['info'][var][i])])
+                        locals_['writer'].add_summary(summary, self_.num_timesteps)
         return True
 
     def get_policy_class(self, policy_params):
@@ -73,17 +75,14 @@ class RCTrainer(Trainer):
             full_tensorboard_log=self.tb_logging
         )
 
-        try:
-            attacker_model.learn(
-                total_timesteps=self.training_steps,
-                callback=self.callback,
-                tb_log_name=f'attacker_{iteration}_{index}'
-            )
-        except KeyboardInterrupt:
-            self.logger.info('Stopping attacker training...')
+        attacker_model.learn(
+            total_timesteps=self.training_steps,
+            callback=self.callback,
+            tb_log_name=f'attacker_{iteration}_{index}'
+        )
 
         attacker_model.save(f'{self.prefix}/params/attacker-{iteration}-{index}')
-        return HistoryAgent(attacker_model)
+        return HistoryAgent(attacker_model) if self.observation_history else SimpleWrapperAgent(attacker_model)
 
     def train_defender(self, attacker, iteration, index) -> Agent:
         self.logger.info(f'Starting defender training for {self.training_steps} steps.')
@@ -106,17 +105,14 @@ class RCTrainer(Trainer):
             full_tensorboard_log=self.tb_logging
         )
 
-        try:
-            defender_model.learn(
-                total_timesteps=self.training_steps,
-                callback=self.callback,
-                tb_log_name=f'defender_{iteration}_{index}'
-            )
-        except KeyboardInterrupt:
-            self.logger.info('Stopping defender training...')
+        defender_model.learn(
+            total_timesteps=self.training_steps,
+            callback=self.callback,
+            tb_log_name=f'defender_{iteration}_{index}'
+        )
 
         defender_model.save(f'{self.prefix}/params/defender-{iteration}-{index}')
-        return HistoryAgent(defender_model)
+        return HistoryAgent(defender_model) if self.observation_history else SimpleWrapperAgent(defender_model)
 
     def get_payoff(self, attacker: Agent, defender: Agent, repeat=20):
         env = gym.make(f'{self.env_id}Def-v0',
@@ -141,6 +137,7 @@ class RCTrainer(Trainer):
 
     def initialize_strategies(self):
         attacker = self.NoOpAgent(4)  #TODO this should not be a constant 4
+        self.logger.info('Initializing a defender against NoOp attacker...')
         defender = self.train_defender_parallel(attacker, 0)
 
         au, du = self.get_payoff(attacker, defender)

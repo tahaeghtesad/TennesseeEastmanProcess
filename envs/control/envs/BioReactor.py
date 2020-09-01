@@ -74,7 +74,7 @@ def mu(x2: float, mu_max: float = 0.53, km: float = 0.12, k1: float = 0.4545) ->
 
 
 class AdversarialBioReactor(gym.Env):
-    def __init__(self, compromise_actuation_prob: float, compromise_observation_prob: float) -> None:
+    def __init__(self, compromise_actuation_prob: float, compromise_observation_prob: float, noise=True) -> None:
         super().__init__()
         self.logger = logging.getLogger(__class__.__name__)
         self.compromise_actuation_prob = compromise_actuation_prob
@@ -82,7 +82,7 @@ class AdversarialBioReactor(gym.Env):
 
         self.compromise = None
 
-        self.env = gym.make('BRP-v0')
+        self.env = gym.make('BRP-v0', noise=noise)
 
     def reset(self) -> Any:
         obs = self.env.reset()
@@ -97,8 +97,8 @@ class AdversarialBioReactor(gym.Env):
 
 class BioReactorAttacker(AdversarialBioReactor):  # This is a noise generator attacker.
 
-    def __init__(self, defender, compromise_actuation_prob: float, compromise_observation_prob: float, power: float = 0.3) -> None:
-        super().__init__(compromise_actuation_prob, compromise_observation_prob)
+    def __init__(self, defender, compromise_actuation_prob: float, compromise_observation_prob: float, power: float = 0.3, noise=True) -> None:
+        super().__init__(compromise_actuation_prob, compromise_observation_prob, noise)
         self.logger = logging.getLogger(__class__.__name__)
         self.defender = defender
 
@@ -132,8 +132,8 @@ class BioReactorAttacker(AdversarialBioReactor):  # This is a noise generator at
 
 class BioReactorDefender(AdversarialBioReactor):
 
-    def __init__(self, attacker, compromise_actuation_prob: float, compromise_observation_prob: float, power: float = 0.3) -> None:
-        super().__init__(compromise_actuation_prob, compromise_observation_prob)
+    def __init__(self, attacker, compromise_actuation_prob: float, compromise_observation_prob: float, power: float = 0.3, noise=True) -> None:
+        super().__init__(compromise_actuation_prob, compromise_observation_prob, noise)
         self.logger = logging.getLogger(__class__.__name__)
         self.attacker = attacker
         self.attacker_obs = None

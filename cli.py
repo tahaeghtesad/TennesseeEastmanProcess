@@ -70,20 +70,6 @@ def do_marl(prefix, index, params, max_iter, trainer_class, nash_solver):
     logger.info(f'Defender Heuristics: {defender_iteration}')
 
     while attacker_iteration < max_iter or defender_iteration < max_iter:
-        # Train Defender
-        logger.info(f'Training Defender {defender_iteration}')
-        attacker_strategy, _ = nash_solver(trainer.attacker_payoff_table,
-                                           trainer.defender_payoff_table)
-        logging.info(f'Attacker MSNE: {attacker_strategy}')
-        attacker_ms.update_probabilities(attacker_strategy)
-        defender_policy = trainer.train_defender_parallel(attacker_ms, defender_iteration)
-        defender_ms.add_policy(defender_policy)
-        payoffs = [trainer.get_payoff(attacker_policy, defender_policy) for attacker_policy in attacker_ms.policies]
-        trainer.update_defender_payoff_table(np.array([au for (au, du) in payoffs]),
-                                             np.array([du for (au, du) in payoffs]))
-        defender_iteration += 1
-        logging.info(f'MSNE Attacker vs New Defender Payoff: {trainer.get_payoff(attacker_ms, defender_policy)}')
-
         # Train Attacker
         logger.info(f'Training Attacker {attacker_iteration}')
         _, defender_strategy = nash_solver(trainer.attacker_payoff_table,
@@ -97,6 +83,20 @@ def do_marl(prefix, index, params, max_iter, trainer_class, nash_solver):
                                              np.array([du for (au, du) in payoffs]))
         attacker_iteration += 1
         logging.info(f'New Attacker vs MSNE Defender Payoff: {trainer.get_payoff(attacker_policy, defender_ms)}')
+
+        # Train Defender
+        logger.info(f'Training Defender {defender_iteration}')
+        attacker_strategy, _ = nash_solver(trainer.attacker_payoff_table,
+                                           trainer.defender_payoff_table)
+        logging.info(f'Attacker MSNE: {attacker_strategy}')
+        attacker_ms.update_probabilities(attacker_strategy)
+        defender_policy = trainer.train_defender_parallel(attacker_ms, defender_iteration)
+        defender_ms.add_policy(defender_policy)
+        payoffs = [trainer.get_payoff(attacker_policy, defender_policy) for attacker_policy in attacker_ms.policies]
+        trainer.update_defender_payoff_table(np.array([au for (au, du) in payoffs]),
+                                             np.array([du for (au, du) in payoffs]))
+        defender_iteration += 1
+        logging.info(f'MSNE Attacker vs New Defender Payoff: {trainer.get_payoff(attacker_ms, defender_policy)}')
 
 
 def to_bool(input):
