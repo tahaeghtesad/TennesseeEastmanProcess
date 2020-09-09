@@ -8,19 +8,15 @@ from agents.RLAgents import Agent
 class Trainer:
     def __init__(self,
                  prefix,
-                 training_steps,
-                 concurrent_runs=4,
                  env_params=None,
                  rl_params=None,
                  policy_params=None,
-                 tb_logging=True) -> None:
-        self.tb_logging = tb_logging
-        self.training_steps = training_steps
+                 training_params=None) -> None:
         self.policy_params = policy_params
         self.prefix = prefix
-        self.concurrent_runs = concurrent_runs
         self.env_params = env_params
         self.rl_params = rl_params
+        self.training_params = training_params
 
         # Attacker is the row player
         # Defender is the column player
@@ -44,8 +40,8 @@ class Trainer:
 
     def train_attacker_parallel(self, defender: Agent, iteration) -> Agent:
         import concurrent.futures
-        with concurrent.futures.ThreadPoolExecutor(max_workers=self.concurrent_runs) as executor:
-            futures = {executor.submit(self.train_attacker, defender, iteration, index): index for index in range(self.concurrent_runs)}
+        with concurrent.futures.ThreadPoolExecutor(max_workers=self.training_params['concurrent_runs']) as executor:
+            futures = {executor.submit(self.train_attacker, defender, iteration, index): index for index in range(self.training_params['concurrent_runs'])}
 
             best_util = -np.inf
             best = None
@@ -63,8 +59,8 @@ class Trainer:
 
     def train_defender_parallel(self, attacker: Agent, iteration) -> Agent:
         import concurrent.futures
-        with concurrent.futures.ThreadPoolExecutor(max_workers=self.concurrent_runs) as executor:
-            futures = {executor.submit(self.train_defender, attacker, iteration, index): index for index in range(self.concurrent_runs)}
+        with concurrent.futures.ThreadPoolExecutor(self.training_params['concurrent_runs']) as executor:
+            futures = {executor.submit(self.train_defender, attacker, iteration, index): index for index in range(self.training_params['concurrent_runs'])}
 
             best_util = -np.inf
             best = None

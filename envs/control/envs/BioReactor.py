@@ -4,6 +4,8 @@ import logging
 from enum import Enum
 from typing import *
 
+from agents.RLAgents import Agent
+
 
 class BioReactor(gym.Env):
 
@@ -43,9 +45,9 @@ class BioReactor(gym.Env):
 
         win = False
         reward = -np.linalg.norm(self.x - self.goal)
-        if np.linalg.norm(self.x - self.goal) < 0.01:
-            reward += 100
-            win = True
+        # if np.linalg.norm(self.x - self.goal) < 0.01:
+        #     reward += 100
+        #     win = True
 
         if win:
             self.win_count += 1
@@ -94,10 +96,13 @@ class AdversarialBioReactor(gym.Env):
 
         return np.concatenate((obs, self.compromise), axis=0)
 
+    def get_compromise(self):
+        return self.compromise
+
 
 class BioReactorAttacker(AdversarialBioReactor):  # This is a noise generator attacker.
 
-    def __init__(self, defender, compromise_actuation_prob: float, compromise_observation_prob: float, power: float = 0.3, noise=True) -> None:
+    def __init__(self, defender: Agent, compromise_actuation_prob: float, compromise_observation_prob: float, power: float = 0.3, noise=True) -> None:
         super().__init__(compromise_actuation_prob, compromise_observation_prob, noise)
         self.logger = logging.getLogger(__class__.__name__)
         self.defender = defender
@@ -108,6 +113,9 @@ class BioReactorAttacker(AdversarialBioReactor):  # This is a noise generator at
                                            high=power * np.array([1.] * (self.env.action_dim + self.env.observation_dim)))
 
         self.defender_obs = np.zeros((4,))
+
+    def set_defender(self, defender: Agent):
+        self.defender = defender
 
     def step(self, action: np.ndarray) -> Tuple[Any, float, bool, Dict]:
 
@@ -123,6 +131,7 @@ class BioReactorAttacker(AdversarialBioReactor):  # This is a noise generator at
         return np.concatenate((obs, self.compromise), axis=0), -reward, done, info
 
     def reset(self) -> Any:
+        self.defender.reset()
         self.defender_obs = super().reset()
         return self.defender_obs
 
@@ -132,7 +141,7 @@ class BioReactorAttacker(AdversarialBioReactor):  # This is a noise generator at
 
 class BioReactorDefender(AdversarialBioReactor):
 
-    def __init__(self, attacker, compromise_actuation_prob: float, compromise_observation_prob: float, power: float = 0.3, noise=True) -> None:
+    def __init__(self, attacker: Agent, compromise_actuation_prob: float, compromise_observation_prob: float, power: float = 0.3, noise=True) -> None:
         super().__init__(compromise_actuation_prob, compromise_observation_prob, noise)
         self.logger = logging.getLogger(__class__.__name__)
         self.attacker = attacker
@@ -144,6 +153,9 @@ class BioReactorDefender(AdversarialBioReactor):
                                            high=np.array([10., 10.]))
 
         self.attacker_power = power
+
+    def set_attacker(self, attacker: Agent):
+        self.attacker = attacker
 
     def step(self, action: np.ndarray) -> Tuple[Any, float, bool, Dict]:
         attacker_action = self.attacker.predict(self.attacker_obs)
@@ -161,6 +173,7 @@ class BioReactorDefender(AdversarialBioReactor):
         return np.concatenate((defender_obs, self.compromise), axis=0), reward, done, info
 
     def reset(self) -> Any:
+        self.attacker.reset()
         self.attacker_obs = super().reset()
         return self.attacker_obs
 

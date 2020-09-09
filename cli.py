@@ -108,12 +108,12 @@ def to_bool(input):
 @click.command(name='mtd')
 @click.option('--prefix', default='runs', help='Prefix folder of run results', show_default=True)
 @click.option('--index', help='Index for this run', required=True)
-@click.option('--training_steps', default=500 * 1000, help='Number of training steps in each iteration of DO.',
+@click.option('--training_params_training_steps', default=500 * 1000, help='Number of training steps in each iteration of DO.',
               show_default=True)
-@click.option('--concurrent_runs', default=4, help='Number of concurrent runs', show_default=True)
-@click.option('--tb_logging', default=True, help='Whether to store Tensorboard logs', show_default=True)
+@click.option('--training_params_concurrent_runs', default=4, help='Number of concurrent runs', show_default=True)
+@click.option('--training_params_tb_logging', default=True, help='Whether to store Tensorboard logs', show_default=True)
 @click.option('--max_iter', default=15, help='Maximum iteration for DO.', show_default=True)
-@click.option('--include_heuristics', default=True, help='Whether to include the heuristics', show_default=True)
+@click.option('--training_params_include_heuristics', default=True, help='Whether to include the heuristics', show_default=True)
 @click.option('--env_params_m', default=10, help='Number of servers in game.', show_default=True)
 @click.option('--env_params_utenv', default=0, help='Utility Environment', show_default=True)
 @click.option('--env_params_setting', default=0, help='Environment Setting', show_default=True)
@@ -131,11 +131,11 @@ def to_bool(input):
 @click.option('--policy_params_dueling', default=True, help='Dueling MLP Network', show_default=True)
 @click.option('--policy_params_normalization', default=True, help='Layer Normalization', show_default=True)
 def do_mtd(prefix, index,
-           training_steps,
-           concurrent_runs,
-           tb_logging,
+           training_params_training_steps,
+           training_params_concurrent_runs,
+           training_params_tb_logging,
            max_iter,
-           include_heuristics,
+           training_params_include_heuristics,
            env_params_m,
            env_params_utenv,
            env_params_setting,
@@ -153,10 +153,12 @@ def do_mtd(prefix, index,
            policy_params_dueling,
            policy_params_normalization):
     params = {
-        'training_steps': training_steps,
-        'concurrent_runs': concurrent_runs,
-        'tb_logging': to_bool(tb_logging),
-        'include_heuristics': to_bool(include_heuristics),
+        'training_params': {
+            'training_steps': training_params_training_steps,
+            'concurrent_runs': training_params_concurrent_runs,
+            'tb_logging': to_bool(training_params_tb_logging),
+            'include_heuristics': to_bool(training_params_include_heuristics),
+        },
         'env_params': {
             'm': env_params_m,
             'utenv': env_params_utenv,
@@ -187,12 +189,13 @@ def do_mtd(prefix, index,
 @click.option('--env_id', help='Name of the training environment', required=True)
 @click.option('--prefix', default='runs', help='Prefix folder of run results', show_default=True)
 @click.option('--index', help='Index for this run', required=True)
-@click.option('--training_steps', default=200 * 1000, help='Number of training steps in each iteration of DO.',
+@click.option('--training_params_training_steps', default=200 * 1000, help='Number of training steps in each iteration of DO.',
               show_default=True)
-@click.option('--concurrent_runs', default=4, help='Number of concurrent runs', show_default=True)
-@click.option('--tb_logging', default=True, help='Whether to store Tensorboard logs', show_default=True)
+@click.option('--training_params_concurrent_runs', default=4, help='Number of concurrent runs', show_default=True)
+@click.option('--training_params_tb_logging', default=True, help='Whether to store Tensorboard logs', show_default=True)
 @click.option('--max_iter', default=15, help='Maximum iteration for DO.', show_default=True)
-@click.option('--observation_history', default=True, help='Whether to include the agent history')
+@click.option('--training_params_observation_history', default=True, help='Whether to include the agent history')
+@click.option('--training_params_limited_history', default=True, help='Whether to limit agent history')
 @click.option('--env_params_compromise_actuation_prob', default=0.5, help='Actuation compromise probability')
 @click.option('--env_params_compromise_observation_prob', default=0.5, help='Observation compromise probability')
 @click.option('--env_params_power', default=0.3, help='Power of attacker')
@@ -202,11 +205,12 @@ def do_mtd(prefix, index,
 @click.option('--policy_params_activation', default='tanh', help='Activation Function', show_default=True)
 @click.option('--policy_params_layers', default='32, 32', help='MLP Network Layers', show_default=True)
 def do_rc(env_id, prefix, index,
-          training_steps,
-          concurrent_runs,
-          tb_logging,
+          training_params_training_steps,
+          training_params_concurrent_runs,
+          training_params_tb_logging,
           max_iter,
-          observation_history,
+          training_params_observation_history,
+          training_params_limited_history,
           rl_params_random_exploration,
           rl_params_gamma,
           policy_params_activation,
@@ -217,10 +221,13 @@ def do_rc(env_id, prefix, index,
           env_params_noise):
     params = {
         'env_id': env_id,
-        'training_steps': training_steps,
-        'concurrent_runs': concurrent_runs,
-        'tb_logging': to_bool(tb_logging),
-        'observation_history': to_bool(observation_history),
+        'training_params': {
+            'training_steps': training_params_training_steps,
+            'concurrent_runs': training_params_concurrent_runs,
+            'tb_logging': to_bool(training_params_tb_logging),
+            'observation_history': to_bool(training_params_observation_history),
+            'limited_history': to_bool(training_params_limited_history)
+        },
         'env_params': {
             'compromise_actuation_prob': env_params_compromise_actuation_prob,
             'compromise_observation_prob': env_params_compromise_observation_prob,

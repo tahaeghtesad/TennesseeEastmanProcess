@@ -49,8 +49,3 @@ register(
     max_episode_steps=200,
     reward_threshold=60.0,
 )
-
-register(
-    id='Historitized-v0',
-    entry_point='util.env_helpers:Historitized'
-)
