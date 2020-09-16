@@ -29,6 +29,8 @@ def init_logger(prefix, index):
 
 
 def do_marl(prefix, index, params, max_iter, trainer_class, nash_solver):
+    # index = f'{index}_{str(np.random.randint(0, 1000)).zfill(4)}'
+
     if not os.path.exists(f'{prefix}'):
         os.makedirs(f'{prefix}')
     if not os.path.exists(f'{prefix}/{index}'):
@@ -57,7 +59,7 @@ def do_marl(prefix, index, params, max_iter, trainer_class, nash_solver):
     logger.info('Initializing Heuristic Strategies...')
     attacker_ms, defender_ms = trainer.initialize_strategies()
     attacker_strategy, defender_strategy = nash_solver(trainer.attacker_payoff_table,
-                                                                     trainer.defender_payoff_table)
+                                                       trainer.defender_payoff_table)
     logging.info(f'Attacker MSNE: {attacker_strategy}')
     logging.info(f'Defender MSNE: {defender_strategy}')
     attacker_ms.update_probabilities(attacker_strategy)
@@ -108,12 +110,14 @@ def to_bool(input):
 @click.command(name='mtd')
 @click.option('--prefix', default='runs', help='Prefix folder of run results', show_default=True)
 @click.option('--index', help='Index for this run', required=True)
-@click.option('--training_params_training_steps', default=500 * 1000, help='Number of training steps in each iteration of DO.',
+@click.option('--training_params_training_steps', default=500 * 1000,
+              help='Number of training steps in each iteration of DO.',
               show_default=True)
 @click.option('--training_params_concurrent_runs', default=4, help='Number of concurrent runs', show_default=True)
 @click.option('--training_params_tb_logging', default=True, help='Whether to store Tensorboard logs', show_default=True)
 @click.option('--max_iter', default=15, help='Maximum iteration for DO.', show_default=True)
-@click.option('--training_params_include_heuristics', default=True, help='Whether to include the heuristics', show_default=True)
+@click.option('--training_params_include_heuristics', default=True, help='Whether to include the heuristics',
+              show_default=True)
 @click.option('--env_params_m', default=10, help='Number of servers in game.', show_default=True)
 @click.option('--env_params_utenv', default=0, help='Utility Environment', show_default=True)
 @click.option('--env_params_setting', default=0, help='Environment Setting', show_default=True)
@@ -189,13 +193,16 @@ def do_mtd(prefix, index,
 @click.option('--env_id', help='Name of the training environment', required=True)
 @click.option('--prefix', default='runs', help='Prefix folder of run results', show_default=True)
 @click.option('--index', help='Index for this run', required=True)
-@click.option('--training_params_training_steps', default=200 * 1000, help='Number of training steps in each iteration of DO.',
+@click.option('--max_iter', default=15, help='Maximum iteration for DO.', show_default=True)
+@click.option('--training_params_training_steps', default=200 * 1000,
+              help='Number of training steps in each iteration of DO.',
               show_default=True)
 @click.option('--training_params_concurrent_runs', default=4, help='Number of concurrent runs', show_default=True)
 @click.option('--training_params_tb_logging', default=True, help='Whether to store Tensorboard logs', show_default=True)
-@click.option('--max_iter', default=15, help='Maximum iteration for DO.', show_default=True)
-@click.option('--training_params_observation_history', default=True, help='Whether to include the agent history')
-@click.option('--training_params_limited_history', default=True, help='Whether to limit agent history')
+@click.option('--training_params_defender_history', default=False, help='Whether to have history for defender')
+@click.option('--training_params_attacker_history', default=False, help='Whether to have history for attacker')
+@click.option('--training_params_defender_limited_history', default=False, help='Wether to have limited history for defender')
+@click.option('--training_params_attacker_limited_history', default=False, help='Wether to have limited history for attacker')
 @click.option('--env_params_compromise_actuation_prob', default=0.5, help='Actuation compromise probability')
 @click.option('--env_params_compromise_observation_prob', default=0.5, help='Observation compromise probability')
 @click.option('--env_params_power', default=0.3, help='Power of attacker')
@@ -205,12 +212,14 @@ def do_mtd(prefix, index,
 @click.option('--policy_params_activation', default='tanh', help='Activation Function', show_default=True)
 @click.option('--policy_params_layers', default='32, 32', help='MLP Network Layers', show_default=True)
 def do_rc(env_id, prefix, index,
+          max_iter,
           training_params_training_steps,
           training_params_concurrent_runs,
           training_params_tb_logging,
-          max_iter,
-          training_params_observation_history,
-          training_params_limited_history,
+          training_params_attacker_history,
+          training_params_defender_history,
+          training_params_attacker_limited_history,
+          training_params_defender_limited_history,
           rl_params_random_exploration,
           rl_params_gamma,
           policy_params_activation,
@@ -225,8 +234,10 @@ def do_rc(env_id, prefix, index,
             'training_steps': training_params_training_steps,
             'concurrent_runs': training_params_concurrent_runs,
             'tb_logging': to_bool(training_params_tb_logging),
-            'observation_history': to_bool(training_params_observation_history),
-            'limited_history': to_bool(training_params_limited_history)
+            'attacker_history': to_bool(training_params_attacker_history),
+            'defender_history': to_bool(training_params_defender_history),
+            'attacker_limited_history': to_bool(training_params_attacker_limited_history),
+            'defender_limited_history': to_bool(training_params_defender_limited_history),
         },
         'env_params': {
             'compromise_actuation_prob': env_params_compromise_actuation_prob,
@@ -251,6 +262,7 @@ def do_rc(env_id, prefix, index,
 @click.pass_context
 def cli(ctx):
     pass
+
 
 cli.add_command(do_rc)
 cli.add_command(do_mtd)

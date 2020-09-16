@@ -4,7 +4,8 @@ from stable_baselines import DDPG
 import envs
 from stable_baselines.ddpg import LnMlpPolicy
 
-from agents.RLAgents import Agent, SimpleWrapperAgent, MixedStrategyAgent, HistoryAgent, LimitedHistoryAgent, SinglePolicyMixedStrategyAgent
+from agents.RLAgents import Agent, SimpleWrapperAgent, MixedStrategyAgent, HistoryAgent, LimitedHistoryAgent, \
+    SinglePolicyMixedStrategyAgent
 from trainer.trainer import Trainer
 import tensorflow as tf
 import numpy as np
@@ -13,7 +14,8 @@ import logging
 
 class RCTrainer(Trainer):
 
-    def __init__(self, prefix, env_id, env_params=None, rl_params=None, policy_params=None, training_params=None) -> None:
+    def __init__(self, prefix, env_id, env_params=None, rl_params=None, policy_params=None,
+                 training_params=None) -> None:
         super().__init__(prefix, env_params, rl_params, policy_params, training_params)
         self.logger = logging.getLogger(__name__)
         self.env_id = env_id
@@ -47,22 +49,27 @@ class RCTrainer(Trainer):
         class CustomPolicy(LnMlpPolicy):
             def __init__(self, *args, **_kwargs):
                 super().__init__(*args, **_kwargs, **policy_params)
+
         return CustomPolicy
 
     def train_attacker(self, defender, iteration, index) -> Agent:
         # env params must have 'compromise_actuation_prob', 'compromise_observation_prob', and 'power'
         # rl params must have 'gamma', 'random_exploration'
         self.logger.info(f'Starting attacker training for {self.training_params["training_steps"]} steps.')
-        env = gym.make('LimitedHistoritized-v0' if self.training_params['limited_history'] else 'Historitized-v0',
+        env = gym.make('LimitedHistoritized-v0' if self.training_params['training_params_attacker_limited_history'] else 'Historitized-v0',
                        env=f'{self.env_id}Att-v0',
                        **self.env_params,
                        defender=defender
                        )\
-            if self.training_params['observation_history'] else\
+            if self.training_params['attacker_history'] else\
             gym.make(f'{self.env_id}Att-v0',
                      **self.env_params,
                      defender=defender
                      )
+        # env = gym.make(f'{self.env_id}Att-v0',
+        #                **self.env_params,
+        #                defender=defender
+        #                )
 
         attacker_model = DDPG(
             policy=self.get_policy_class(self.policy_params),
@@ -80,8 +87,8 @@ class RCTrainer(Trainer):
         )
 
         attacker_model.save(f'{self.prefix}/params/attacker-{iteration}-{index}')
-        if self.training_params['observation_history']:
-            if self.training_params['limited_history']:
+        if self.training_params['attacker_history']:
+            if self.training_params['attacker_limited_history']:
                 return LimitedHistoryAgent(attacker_model)
             else:
                 return HistoryAgent(attacker_model)
@@ -90,12 +97,12 @@ class RCTrainer(Trainer):
 
     def train_defender(self, attacker, iteration, index) -> Agent:
         self.logger.info(f'Starting defender training for {self.training_params["training_steps"]} steps.')
-        env = gym.make('LimitedHistoritized-v0' if self.training_params['limited_history'] else 'Historitized-v0',
+        env = gym.make('LimitedHistoritized-v0' if self.training_params['defender_limited_history'] else 'Historitized-v0',
                        env=f'{self.env_id}Def-v0',
                        **self.env_params,
                        attacker=attacker
                        ) \
-            if self.training_params['observation_history'] else \
+            if self.training_params['defender_history'] else \
             gym.make(f'{self.env_id}Def-v0',
                      **self.env_params,
                      attacker=attacker
@@ -116,8 +123,8 @@ class RCTrainer(Trainer):
         )
 
         defender_model.save(f'{self.prefix}/params/defender-{iteration}-{index}')
-        if self.training_params['observation_history']:
-            if self.training_params['limited_history']:
+        if self.training_params['defender_history']:
+            if self.training_params['defender_limited_history']:
                 return LimitedHistoryAgent(defender_model)
             else:
                 return HistoryAgent(defender_model)
@@ -126,9 +133,9 @@ class RCTrainer(Trainer):
 
     def get_payoff(self, attacker: Agent, defender: Agent, repeat=20):
         env = gym.make(f'{self.env_id}Def-v0',
-                     **self.env_params,
-                     attacker=attacker
-                     )
+                       **self.env_params,
+                       attacker=attacker
+                       )
 
         r = 0
 
@@ -146,7 +153,7 @@ class RCTrainer(Trainer):
         return -r / repeat, r / repeat
 
     def initialize_strategies(self):
-        attacker = self.NoOpAgent(4)  #TODO this should not be a constant 4
+        attacker = self.NoOpAgent(4)  # TODO this should not be a constant 4
         self.logger.info('Initializing a defender against NoOp attacker...')
         defender = self.train_defender_parallel(attacker, 0)
 
