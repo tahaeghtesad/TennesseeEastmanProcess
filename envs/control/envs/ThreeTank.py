@@ -56,9 +56,9 @@ class ThreeTank(gym.Env):
 
         win = False
         reward = -np.linalg.norm(self.x - self.goal)
-        if np.linalg.norm(self.x - self.goal) < self.proximity:
-            reward += 100
-            win = True
+        # if np.linalg.norm(self.x - self.goal) < self.proximity:
+        #     reward += 100
+        #     win = True
 
         if win:
             self.win_count += 1
@@ -85,7 +85,7 @@ class ThreeTank(gym.Env):
 
 
 class AdversarialThreeTank(gym.Env):
-    def __init__(self, compromise_actuation_prob: float, compromise_observation_prob: float) -> None:
+    def __init__(self, compromise_actuation_prob: float, compromise_observation_prob: float, noise=True) -> None:
         super().__init__()
         self.logger = logging.getLogger(__class__.__name__)
         self.compromise_actuation_prob = compromise_actuation_prob
@@ -94,7 +94,7 @@ class AdversarialThreeTank(gym.Env):
         self.compromise_actuation = False
         self.compromise_observation = False
 
-        self.env = gym.make('TT-v0')
+        self.env = gym.make('TT-v0', noise=noise)
 
     def reset(self) -> Any:
         obs = self.env.reset()
@@ -112,8 +112,8 @@ class AdversarialThreeTank(gym.Env):
 class ThreeTankAttacker(AdversarialThreeTank):
 
     def __init__(self, defender, compromise_actuation_prob: float, compromise_observation_prob: float,
-                 power: float = 0.3) -> None:
-        super().__init__(compromise_actuation_prob, compromise_observation_prob)
+                 power: float = 0.3, noise=True) -> None:
+        super().__init__(compromise_actuation_prob, compromise_observation_prob, noise)
         self.logger = logging.getLogger(__class__.__name__)
         self.defender = defender
 
@@ -149,8 +149,8 @@ class ThreeTankAttacker(AdversarialThreeTank):
 
 class ThreeTankDefender(AdversarialThreeTank):
 
-    def __init__(self, attacker, compromise_actuation_prob: float, compromise_observation_prob: float) -> None:
-        super().__init__(compromise_actuation_prob, compromise_observation_prob)
+    def __init__(self, attacker, compromise_actuation_prob: float, compromise_observation_prob: float, power=0.3, noise=True) -> None:
+        super().__init__(compromise_actuation_prob, compromise_observation_prob, noise)
         self.logger = logging.getLogger(__class__.__name__)
         self.attacker = attacker
         self.attacker_obs = np.zeros((4,))
