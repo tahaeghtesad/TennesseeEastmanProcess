@@ -5,7 +5,7 @@ import envs
 from stable_baselines.ddpg import LnMlpPolicy
 
 from agents.RLAgents import Agent, SimpleWrapperAgent, MixedStrategyAgent, HistoryAgent, LimitedHistoryAgent, \
-    SinglePolicyMixedStrategyAgent
+    SinglePolicyMixedStrategyAgent, NoOpAgent
 from trainer.trainer import Trainer
 import tensorflow as tf
 import numpy as np
@@ -19,15 +19,6 @@ class RCTrainer(Trainer):
         super().__init__(prefix, env_params, rl_params, policy_params, training_params)
         self.logger = logging.getLogger(__name__)
         self.env_id = env_id
-
-    class NoOpAgent(Agent):
-
-        def __init__(self, action_dim) -> None:
-            super().__init__()
-            self.action_dim = action_dim
-
-        def predict(self, observation, state=None, mask=None, deterministic=True):
-            return np.zeros(self.action_dim)
 
     @staticmethod
     def callback(locals_, globals_):
@@ -52,7 +43,7 @@ class RCTrainer(Trainer):
 
         return CustomPolicy
 
-    def train_attacker(self, defender, iteration, index) -> Agent:
+    def train_attacker(self, defender, iteration, index):
         # env params must have 'compromise_actuation_prob', 'compromise_observation_prob', and 'power'
         # rl params must have 'gamma', 'random_exploration'
         self.logger.info(f'Starting attacker training for {self.training_params["training_steps"]} steps.')
@@ -87,15 +78,20 @@ class RCTrainer(Trainer):
         )
 
         attacker_model.save(f'{self.prefix}/params/attacker-{iteration}-{index}')
-        if self.training_params['attacker_history']:
-            if self.training_params['attacker_limited_history']:
-                return LimitedHistoryAgent(attacker_model)
-            else:
-                return HistoryAgent(attacker_model)
-        else:
-            return SimpleWrapperAgent(attacker_model)
 
-    def train_defender(self, attacker, iteration, index) -> Agent:
+        def initializer():
+            ddpg_model = DDPG.load(f'{self.prefix}/params/attacker-{iteration}-{index}')
+            if self.training_params['attacker_history']:
+                if self.training_params['attacker_limited_history']:
+                    return LimitedHistoryAgent(ddpg_model)
+                else:
+                    return HistoryAgent(ddpg_model)
+            else:
+                return SimpleWrapperAgent(ddpg_model)
+
+        return initializer
+
+    def train_defender(self, attacker, iteration, index):
         self.logger.info(f'Starting defender training for {self.training_params["training_steps"]} steps.')
         env = gym.make('LimitedHistoritized-v0' if self.training_params['defender_limited_history'] else 'Historitized-v0',
                        env=f'{self.env_id}Def-v0',
@@ -123,13 +119,18 @@ class RCTrainer(Trainer):
         )
 
         defender_model.save(f'{self.prefix}/params/defender-{iteration}-{index}')
-        if self.training_params['defender_history']:
-            if self.training_params['defender_limited_history']:
-                return LimitedHistoryAgent(defender_model)
+
+        def initializer():
+            ddpg_model = DDPG.load(f'{self.prefix}/params/defender-{iteration}-{index}')
+            if self.training_params['defender_history']:
+                if self.training_params['defender_limited_history']:
+                    return LimitedHistoryAgent(ddpg_model)
+                else:
+                    return HistoryAgent(ddpg_model)
             else:
-                return HistoryAgent(defender_model)
-        else:
-            return SimpleWrapperAgent(defender_model)
+                return SimpleWrapperAgent(ddpg_model)
+
+        return initializer
 
     def get_payoff(self, attacker: Agent, defender: Agent, repeat=20):
         env = gym.make(f'{self.env_id}Def-v0',
@@ -153,7 +154,7 @@ class RCTrainer(Trainer):
         return -r / repeat, r / repeat
 
     def initialize_strategies(self):
-        attacker = self.NoOpAgent(4)  # TODO this should not be a constant 4
+        attacker = NoOpAgent(4)  # TODO this should not be a constant 4
         self.logger.info('Initializing a defender against NoOp attacker...')
         defender = self.train_defender_parallel(attacker, 0)
 

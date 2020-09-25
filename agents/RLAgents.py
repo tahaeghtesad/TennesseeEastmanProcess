@@ -93,3 +93,13 @@ class LimitedHistoryAgent(HistoryAgent):
     def predict(self, observation, state=None, mask=None, deterministic=True):
         self.add_history(observation)
         return self.agent.predict(np.array(self.history)[self.select].flatten(), state, mask, deterministic)[0]
+
+
+class NoOpAgent(Agent):
+
+    def __init__(self, action_dim) -> None:
+        super().__init__()
+        self.action_dim = action_dim
+
+    def predict(self, observation, state=None, mask=None, deterministic=True):
+        return np.zeros(self.action_dim)
