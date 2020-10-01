@@ -41,7 +41,8 @@ if __name__ == '__main__':
 
     for config in runs:
         for _ in range(8):
-            run(['--prefix', 'runs',
+            run(['mtd',
+                 '--prefix', 'runs',
                  '--index', str(index),
                  '--training_steps', '500000',
                  '--concurrent_runs', '1',
