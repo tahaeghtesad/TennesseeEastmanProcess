@@ -43,11 +43,10 @@ if __name__ == '__main__':
         for _ in range(8):
             run(['--prefix', 'runs',
                  '--index', str(index),
-                 '--training_steps', '400000',
+                 '--training_steps', '500000',
                  '--concurrent_runs', '1',
                  '--tb_logging', 'False',
-                 '--max_iter', '15',
-                 '--max_iter', '10',
+                 '--max_iter', '8',
                  '--include_heuristics', 'False',
                  '--env_params_alpha', str(config[0]),
                  '--env_params_downtime', str(config[1]),
@@ -58,6 +57,6 @@ if __name__ == '__main__':
                  '--policy_params_dueling', 'True',
                  '--rl_params_prioritized_replay', 'False',
                  '--policy_params_normalization', 'True',
-                 '--policy_params_layers', '32, 32'])
+                 '--policy_params_layers', '64, 64'])
             index += 1
 
