@@ -47,7 +47,7 @@ if __name__ == '__main__':
                  '--training_params_training_steps', '500000',
                  '--training_params_concurrent_runs', '1',
                  '--training_params_tb_logging', 'False',
-                 '--training_params_max_iter', '8',
+                 '--max_iter', '8',
                  '--training_params_include_heuristics', 'False',
                  '--env_params_alpha', str(config[0]),
                  '--env_params_downtime', str(config[1]),
