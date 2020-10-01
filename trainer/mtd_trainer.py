@@ -10,7 +10,6 @@ import gym
 import envs
 from envs.mtd.heuristics import *
 from tqdm import tqdm
-import time
 
 
 class MTDTrainer(Trainer):
@@ -105,14 +104,12 @@ class MTDTrainer(Trainer):
             full_tensorboard_log=self.training_params['tb_logging']
         )
 
-        for step in range(0, self.training_params['training_steps'], 10000):
-            start_time = time.time()
+        for _ in tqdm(range(0, self.training_params['training_steps'], 10000)):
             attacker_model.learn(
                 total_timesteps=10000,
                 callback=self.callback,
                 tb_log_name=f'attacker_{iteration}_{index}'
             )
-            self.logger.info(f'Step {step + 10000} took {(time.time() - start_time):.2f} (s)')
 
         attacker_model.save(f'{self.prefix}/params/attacker-{iteration}-{index}')
 
@@ -135,11 +132,12 @@ class MTDTrainer(Trainer):
             full_tensorboard_log=self.training_params['tb_logging']
         )
 
-        defender_model.learn(
-            total_timesteps=self.training_params['training_steps'],
-            callback=self.callback,
-            tb_log_name=f'defender_{iteration}_{index}'
-        )
+        for _ in tqdm(range(0, self.training_params['training_steps'], 10000)):
+            defender_model.learn(
+                total_timesteps=10000,
+                callback=self.callback,
+                tb_log_name=f'defender_{iteration}_{index}'
+            )
 
         defender_model.save(f'{self.prefix}/params/defender-{iteration}-{index}')
 
