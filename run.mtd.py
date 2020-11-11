@@ -36,7 +36,7 @@ if __name__ == '__main__':
 
         [0.05, 7, 0.1, 0, 3],
         [0.05, 7, 0.05, 0, 3],
-        [0.05, 7, 0.2, 0, 3],
+        [0.05, 7, 0.2, 0, 3],   
     ]
 
     for config in runs:
@@ -60,4 +60,3 @@ if __name__ == '__main__':
                  '--policy_params_normalization', 'True',
                  '--policy_params_layers', '64, 64'])
             index += 1
-

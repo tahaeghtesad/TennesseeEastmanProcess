@@ -1,9 +1,9 @@
+import logging
+from typing import *
+
 import gym
 import numpy as np
 from scipy import constants as const
-import logging
-from enum import Enum
-from typing import *
 
 
 class ThreeTank(gym.Env):

@@ -1,8 +1,8 @@
+import logging
+from typing import *
+
 import gym
 import numpy as np
-import logging
-from enum import Enum
-from typing import *
 
 from agents.RLAgents import Agent
 
@@ -45,9 +45,9 @@ class BioReactor(gym.Env):
 
         win = False
         reward = -np.linalg.norm(self.x - self.goal)
-        # if np.linalg.norm(self.x - self.goal) < 0.01:
-        #     reward += 100
-        #     win = True
+        if np.linalg.norm(self.x - self.goal) < 0.01:
+            # reward += 100
+            win = True
 
         if win:
             self.win_count += 1

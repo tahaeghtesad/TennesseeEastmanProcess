@@ -1,16 +1,12 @@
-import logging
-from typing import List
-
 import numpy as np
-from stable_baselines.common import BaseRLModel
-
+from tensorforce import Agent as TFAgent
 
 class Agent:
 
     def __init__(self) -> None:
         super().__init__()
 
-    def predict(self, observation, state=None, mask=None, deterministic=True):
+    def predict(self, observation):
         raise NotImplementedError()
 
     def reset(self):
@@ -49,24 +45,24 @@ class SinglePolicyMixedStrategyAgent(MixedStrategyAgent):
 
 class SimpleWrapperAgent(Agent):
 
-    def __init__(self, agent: [Agent, BaseRLModel]) -> None:
+    def __init__(self, agent: TFAgent) -> None:
         super().__init__()
         self.agent = agent
 
-    def predict(self, observation, state=None, mask=None, deterministic=True):
-        return self.agent.predict(observation, state, mask, deterministic)[0]
+    def predict(self, observation):
+        return self.agent.act(states=observation, independent=True)
 
-    def save(self, save_path, cloudpickle=False):
-        return self.agent.save(save_path, cloudpickle)
+    def save(self, save_path: str):
+        return self.agent.save(directory=save_path[:save_path.rfind('/')], filename=save_path[save_path.rfind('/'):], format='numpy')
 
 
 class HistoryAgent(SimpleWrapperAgent):
 
-    def __init__(self, agent: [Agent, BaseRLModel], observation_dim=2, history_length=12) -> None:
+    def __init__(self, agent: Agent, observation_dim=2, history_length=12) -> None:
         super().__init__(agent)
         self.history_length = history_length
         self.observation_dim = observation_dim
-        self.agent = agent
+        self.agent = agent if type(agent) is not Agent else SimpleWrapperAgent(agent)
         self.history = []
 
     def add_history(self, observation):
@@ -81,18 +77,18 @@ class HistoryAgent(SimpleWrapperAgent):
 
     def predict(self, observation, state=None, mask=None, deterministic=True):
         self.add_history(observation)
-        return self.agent.predict(np.array(self.history).flatten(), state, mask, deterministic)[0]
+        return self.agent.predict(np.array(self.history).flatten())
 
 
 class LimitedHistoryAgent(HistoryAgent):
 
-    def __init__(self, agent: [Agent, BaseRLModel], observation_dim=2, history_length=12, select=None) -> None:
+    def __init__(self, agent: Agent, observation_dim=2, history_length=12, select=None) -> None:
         super().__init__(agent, observation_dim, history_length)
         self.select = [0, 4, 11] if select is None else select
 
     def predict(self, observation, state=None, mask=None, deterministic=True):
         self.add_history(observation)
-        return self.agent.predict(np.array(self.history)[self.select].flatten(), state, mask, deterministic)[0]
+        return self.agent.predict(np.array(self.history)[self.select].flatten())
 
 
 class NoOpAgent(Agent):

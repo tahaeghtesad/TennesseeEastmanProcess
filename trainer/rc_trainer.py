@@ -1,9 +1,7 @@
 import gym
-from stable_baselines import DDPG
-
 import envs
-from stable_baselines.ddpg import LnMlpPolicy
-
+from tensorforce import Runner, Environment
+from tensorforce import Agent as TFAgent
 from agents.RLAgents import Agent, SimpleWrapperAgent, MixedStrategyAgent, HistoryAgent, LimitedHistoryAgent, \
     SinglePolicyMixedStrategyAgent, NoOpAgent
 from trainer.trainer import Trainer
@@ -22,65 +20,78 @@ class RCTrainer(Trainer):
 
     @staticmethod
     def callback(locals_, globals_):
-        self_ = locals_['self']
-
-        variables = ['u', 'x', 'dx', 'a', 'o']
-
-        if 'info' in locals_ and 'writer' in locals_ and locals_['writer'] is not None:
-            for var in variables:
-                if var in locals_['info']:
-                    for i in range(len(locals_['info'][var])):
-                        summary = tf.Summary(
-                            value=[tf.Summary.Value(tag=f'env/{var}{i}', simple_value=locals_['info'][var][i])])
-                        locals_['writer'].add_summary(summary, self_.num_timesteps)
+        # self_ = locals_['self']
+        #
+        # variables = ['u', 'x', 'dx', 'a', 'o']
+        #
+        # if 'info' in locals_ and 'writer' in locals_ and locals_['writer'] is not None:
+        #     for var in variables:
+        #         if var in locals_['info']:
+        #             for i in range(len(locals_['info'][var])):
+        #                 summary = tf.Summary(
+        #                     value=[tf.Summary.Value(tag=f'env/{var}{i}', simple_value=locals_['info'][var][i])])
+        #                 locals_['writer'].add_summary(summary, self_.num_timesteps)
         return True
 
     def get_policy_class(self, policy_params):
-        # policy params must have 'act_fun' and 'layers'
-        class CustomPolicy(LnMlpPolicy):
-            def __init__(self, *args, **_kwargs):
-                super().__init__(*args, **_kwargs, **policy_params)
+        # # policy params must have 'act_fun' and 'layers'
+        # class CustomPolicy(LnMlpPolicy):
+        #     def __init__(self, *args, **_kwargs):
+        #         super().__init__(*args, **_kwargs, **policy_params)
+        #
+        # return CustomPolicy
+        return None
 
-        return CustomPolicy
-
-    def train_attacker(self, defender, iteration, index):
+    def train_attacker(self, defender, iteration):
         # env params must have 'compromise_actuation_prob', 'compromise_observation_prob', and 'power'
         # rl params must have 'gamma', 'random_exploration'
         self.logger.info(f'Starting attacker training for {self.training_params["training_steps"]} steps.')
-        env = gym.make('LimitedHistoritized-v0' if self.training_params['training_params_attacker_limited_history'] else 'Historitized-v0',
-                       env=f'{self.env_id}Att-v0',
-                       **self.env_params,
-                       defender=defender
-                       )\
-            if self.training_params['attacker_history'] else\
-            gym.make(f'{self.env_id}Att-v0',
-                     **self.env_params,
-                     defender=defender
-                     )
-        # env = gym.make(f'{self.env_id}Att-v0',
-        #                **self.env_params,
-        #                defender=defender
-        #                )
+        def get_env():
+            env = Environment.create(environment='gym',
+                                     level='LimitedHistoritized-v0' if self.training_params['training_params_attacker_limited_history'] else 'Historitized-v0',
+                                     env=f'{self.env_id}Att-v0',
+                                     **self.env_params,
+                                     defender=defender)\
+                if self.training_params['attacker_history'] else \
+                Environment.create(environment='gym',
+                                   level=f'{self.env_id}Att-v0',
+                                   **self.env_params,
+                                   defender=defender)
+            return env
 
-        attacker_model = DDPG(
-            policy=self.get_policy_class(self.policy_params),
-            env=env,
-            **self.rl_params,
-            verbose=1,
-            tensorboard_log=f'{self.prefix}/tb_logs' if self.training_params['tb_logging'] else None,
-            full_tensorboard_log=self.training_params['tb_logging']
+        agent = TFAgent.create(agent='ddpg',
+                               environment=get_env(),
+                               memory=50_000,
+                               batch_size=128,
+                               network='auto',
+                               # use_beta_distribution=True,
+                               # update_frequency=1,  # default: batch_size
+                               # start_updating=128, # default: batch_size
+                               learning_rate=1e-4,
+                               discount=.90,
+                               # critic=dict(),
+                               critic_optimizer=1.0,
+                               exploration=.1,
+                               parallel_interactions=self.training_params['concurrent_runs'],
+                               summarizer=dict(
+                                   directory=f'{self.prefix}/tb_logs',
+                                   filename=f'attacker-{iteration}',
+                                   # list of labels, or 'all'
+                                   summaries='all'
+                               ))
+
+        runner = Runner(
+            agent=agent,
+            environments=[get_env() for _ in range(self.training_params['concurrent_runs'])],
+            # num_parallel=self.training_params['concurrent_runs']
         )
 
-        attacker_model.learn(
-            total_timesteps=self.training_params['training_steps'],
-            callback=self.callback,
-            tb_log_name=f'attacker_{iteration}_{index}'
-        )
+        runner.run(num_timesteps=self.training_params['training_steps'])
 
-        attacker_model.save(f'{self.prefix}/params/attacker-{iteration}-{index}')
+        agent.save(directory=f'{self.prefix}/params/', filename=f'attacker-{iteration}', format='numpy')
 
         def initializer():
-            ddpg_model = DDPG.load(f'{self.prefix}/params/attacker-{iteration}-{index}')
+            ddpg_model = TFAgent.load(directory=f'{self.prefix}/params/', filename=f'attacker-{iteration}', format='numpy')
             if self.training_params['attacker_history']:
                 if self.training_params['attacker_limited_history']:
                     return LimitedHistoryAgent(ddpg_model)
@@ -91,37 +102,67 @@ class RCTrainer(Trainer):
 
         return initializer
 
-    def train_defender(self, attacker, iteration, index):
+    def train_defender(self, attacker, iteration):
         self.logger.info(f'Starting defender training for {self.training_params["training_steps"]} steps.')
-        env = gym.make('LimitedHistoritized-v0' if self.training_params['defender_limited_history'] else 'Historitized-v0',
-                       env=f'{self.env_id}Def-v0',
-                       **self.env_params,
-                       attacker=attacker
-                       ) \
-            if self.training_params['defender_history'] else \
-            gym.make(f'{self.env_id}Def-v0',
-                     **self.env_params,
-                     attacker=attacker
-                     )
-        defender_model = DDPG(
-            policy=self.get_policy_class(self.policy_params),
-            env=env,
-            **self.rl_params,
-            verbose=1,
-            tensorboard_log=f'{self.prefix}/tb_logs' if self.training_params['tb_logging'] else None,
-            full_tensorboard_log=self.training_params['tb_logging']
+
+        def get_env():
+            env = Environment.create(environment='gym',
+                                     level='LimitedHistoritized-v0' if self.training_params[
+                                         'training_params_defender_limited_history'] else 'Historitized-v0',
+                                     env=f'{self.env_id}Def-v0',
+                                     **self.env_params,
+                                     attacker=attacker) \
+                if self.training_params['defender_history'] else \
+                Environment.create(environment='gym',
+                                   level=f'{self.env_id}Def-v0',
+                                   **self.env_params,
+                                   attacker=attacker)
+            return env
+
+        agent = TFAgent.create(agent='ddpg',
+                               environment=get_env(),
+                               memory=50_000,
+                               batch_size=256,
+                               network=[dict(type='dense', size=64, activation='elu') for _ in range(5)],
+                               use_beta_distribution=True,
+                               update_frequency=1,  # default: batch_size
+                               # start_updating=128,  # default: batch_size
+                               learning_rate=1e-4,
+                               discount=.90,
+                               # critic=dict(),
+                               critic_optimizer=1.0,
+                               exploration=.1,
+                               parallel_interactions=self.training_params['concurrent_runs'],
+                               summarizer=dict(
+                                   directory=f'{self.prefix}/tb_logs',
+                                   filename=f'defender-{iteration}',
+                                   # list of labels, or 'all'
+                                   summaries='all'
+                               ))
+
+        training_envs = [get_env() for _ in range(self.training_params['concurrent_runs'])]
+        runner = Runner(
+            agent=agent,
+            # environment=get_env()
+            environments=training_envs,
+            blocking=True,
+            remote='multiprocessing'
         )
 
-        defender_model.learn(
-            total_timesteps=self.training_params['training_steps'],
-            callback=self.callback,
-            tb_log_name=f'defender_{iteration}_{index}'
+        runner.run(
+            num_episodes=self.training_params['training_steps'] / 200,
+            batch_agent_calls=True,
         )
 
-        defender_model.save(f'{self.prefix}/params/defender-{iteration}-{index}')
+        agent.save(directory=f'{self.prefix}/params/', filename=f'defender-{iteration}', format='numpy')
+
+        agent.close()
+        runner.close()
+        for env in training_envs:
+            env.close()
 
         def initializer():
-            ddpg_model = DDPG.load(f'{self.prefix}/params/defender-{iteration}-{index}')
+            ddpg_model = TFAgent.load(directory=f'{self.prefix}/params/', filename=f'defender-{iteration}', format='numpy')
             if self.training_params['defender_history']:
                 if self.training_params['defender_limited_history']:
                     return LimitedHistoryAgent(ddpg_model)
@@ -156,7 +197,7 @@ class RCTrainer(Trainer):
     def initialize_strategies(self):
         attacker = NoOpAgent(4)  # TODO this should not be a constant 4
         self.logger.info('Initializing a defender against NoOp attacker...')
-        defender = self.train_defender_parallel(attacker, 0)
+        defender = self.train_defender(attacker, 0)()
 
         au, du = self.get_payoff(attacker, defender)
 

@@ -4,12 +4,11 @@ import json
 
 import gym
 import gym.envs
-import matplotlib.pyplot as plt
 import numpy as np
 from stable_baselines import DDPG
 from tqdm import tqdm
 
-from agents.RLAgents import MixedStrategyAgent, HistoryAgent, SimpleWrapperAgent
+from agents.RLAgents import MixedStrategyAgent, HistoryAgent
 from trainer import RCTrainer
 from util.nash_helpers import find_zero_sum_mixed_ne_gambit
 

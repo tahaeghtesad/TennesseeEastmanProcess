@@ -1,5 +1,6 @@
-import gym
 from typing import *
+
+import gym
 
 
 class TennesseeEastmanProcess(gym.Env):

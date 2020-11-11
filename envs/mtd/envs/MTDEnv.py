@@ -1,11 +1,11 @@
-import gym
-from gym.spaces import *
 import logging
-from enum import Enum
 import math
 import random
-import numpy as np
 import time
+from enum import Enum
+
+import gym
+from gym.spaces import *
 
 from envs.mtd.processors import AttackerProcessor, DefenderProcessor
 

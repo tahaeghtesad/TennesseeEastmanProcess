@@ -90,7 +90,7 @@ class MTDTrainer(Trainer):
         self.save_tables()
         return attacker_ms, defender_ms
 
-    def train_attacker(self, defender, iteration, index):
+    def train_attacker(self, defender, iteration):
         self.logger.info(f'Starting attacker training for {self.training_params["training_steps"]} steps.')
         env = gym.make('MTDAtt-v0', **self.env_params,
                    defender=defender)
@@ -119,7 +119,7 @@ class MTDTrainer(Trainer):
 
         return initializer
 
-    def train_defender(self, attacker, iteration, index) -> Agent:
+    def train_defender(self, attacker, iteration) -> Agent:
         self.logger.info(f'Starting defender training for {self.training_params["training_steps"]} steps.')
         env = gym.make('MTDDef-v0', **self.env_params,
                        attacker=attacker)
@@ -136,13 +136,13 @@ class MTDTrainer(Trainer):
             defender_model.learn(
                 total_timesteps=10000,
                 callback=self.callback,
-                tb_log_name=f'defender_{iteration}_{index}'
+                tb_log_name=f'defender_{iteration}'
             )
 
-        defender_model.save(f'{self.prefix}/params/defender-{iteration}-{index}')
+        defender_model.save(f'{self.prefix}/params/defender-{iteration}')
 
         def initializer():
-            dqn_model = DQN.load(f'{self.prefix}/params/defender-{iteration}-{index}')
+            dqn_model = DQN.load(f'{self.prefix}/params/defender-{iteration}')
             return SimpleWrapperAgent(dqn_model)
 
         return initializer
