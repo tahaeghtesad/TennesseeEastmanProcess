@@ -38,6 +38,9 @@ class ThreeTank(gym.Env):
     def q20(self, mu20=0.6, sn=0.00005):
         return np.sqrt(2 * const.g * self.x[1]) * mu20 * sn
 
+    def clip(self, state):
+        return np.clip(state, self.observation_space.low, self.observation_space.high)
+
     def step(self, action: np.ndarray) -> Tuple[Any, float, bool, Dict]:  # Obs, Reward, Done, Info
         self.step_count += 1
 
@@ -52,7 +55,7 @@ class ThreeTank(gym.Env):
         ])
 
         self.x = self.x * 1. + dx
-        self.x = np.clip(self.x, self.tank_size.low, self.tank_size.high)
+        self.x = self.clip(self.x)
 
         win = False
         reward = -np.linalg.norm(self.x - self.goal)
@@ -65,7 +68,7 @@ class ThreeTank(gym.Env):
 
         obs = self.x[:2]
 
-        return obs * (1. + np.random.normal(loc=np.zeros(2, ), scale=np.array([0.00, 0.07]))) if self.noise else obs, reward, win, {
+        return self.clip(obs * (1. + np.random.normal(loc=np.zeros(2, ), scale=np.array([0.00, 0.07]))) if self.noise else obs), reward, win, {
                    'u': u,
                    'x': self.x,
                    'dx': dx
@@ -76,7 +79,7 @@ class ThreeTank(gym.Env):
 
         self.episode_count += 1
         self.step_count = 0
-        self.x = self.tank_size.sample()
+        self.x = self.observation_space.sample() if np.random.rand() < 0.5 else self.goal.copy()
         self.logger.debug(f'Reset... Starting Point: {self.x}')
         return self.x[:2]
 

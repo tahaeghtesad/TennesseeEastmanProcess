@@ -14,8 +14,8 @@ class BioReactor(gym.Env):
         self.logger = logging.getLogger(__class__.__name__)
         self.x = np.array([0., 0.])
 
-        self.action_space = gym.spaces.Box(low=-np.array([10.0, 10.0]), high=np.array([10.0, 10.0]))
-        self.observation_space = gym.spaces.Box(low=-np.array([10., 10.]), high=np.array([10., 10.]))
+        self.action_space = gym.spaces.Box(low=-np.array([5.0, 5.0]), high=np.array([5.0, 5.0]))
+        self.observation_space = gym.spaces.Box(low=-np.array([5., 5.]), high=np.array([5., 5.]))
 
         self.action_dim = 2
         self.observation_dim = 2
@@ -30,6 +30,9 @@ class BioReactor(gym.Env):
 
         self.win_count = 0
 
+    def clip(self, state):
+        return np.clip(state, self.observation_space.low, self.observation_space.high)
+
     def step(self, action: np.ndarray) -> Tuple[Any, float, bool, Dict]:  # Obs, Reward, Done, Info
         self.step_count += 1
 
@@ -41,18 +44,18 @@ class BioReactor(gym.Env):
         ])
 
         self.x = self.x * 1. + dx
-        self.x = np.clip(self.x, self.observation_space.low, self.observation_space.high)
+        self.x = self.clip(self.x)
 
         win = False
         reward = -np.linalg.norm(self.x - self.goal)
         # if np.linalg.norm(self.x - self.goal) < 0.01:
-        #     reward += 100
+        #     reward += 5.
         #     win = True
 
         if win:
             self.win_count += 1
 
-        return self.x * (1. + np.random.normal(loc=np.zeros(self.observation_dim,), scale=np.array([0.00, 0.07]))) if self.noise else self.x, reward, win, {
+        return self.clip(self.x * (1. + np.random.normal(loc=np.zeros(self.observation_dim,), scale=np.array([0.00, 0.07]))) if self.noise else self.x), reward, win, {
             'u': u,
             'x': self.x,
             'dx': dx
@@ -63,7 +66,8 @@ class BioReactor(gym.Env):
 
         self.episode_count += 1
         self.step_count = 0
-        self.x = self.observation_space.sample()
+        # self.x = self.goal.copy()
+        self.x = self.observation_space.sample() if np.random.rand() < 0.5 else self.goal.copy()
         self.logger.debug(f'Reset... Starting Point: {self.x}')
         return self.x
 
@@ -107,8 +111,8 @@ class BioReactorAttacker(AdversarialBioReactor):  # This is a noise generator at
         self.logger = logging.getLogger(__class__.__name__)
         self.defender = defender
 
-        self.observation_space = gym.spaces.Box(low=np.array([-10., -10.] + [0.] * (self.env.action_dim + self.env.observation_dim)),
-                                                high=np.array([10., 10.]  + [0.] * (self.env.action_dim + self.env.observation_dim)))
+        self.observation_space = gym.spaces.Box(low=np.array([-5., -5.] + [0.] * (self.env.action_dim + self.env.observation_dim)),
+                                                high=np.array([5., 5.]  + [0.] * (self.env.action_dim + self.env.observation_dim)))
         self.action_space = gym.spaces.Box(low=-power * np.array([1.] * (self.env.action_dim + self.env.observation_dim)),
                                            high=power * np.array([1.] * (self.env.action_dim + self.env.observation_dim)))
 
@@ -147,10 +151,10 @@ class BioReactorDefender(AdversarialBioReactor):
         self.attacker = attacker
         self.attacker_obs = None
 
-        self.observation_space = gym.spaces.Box(low=np.array([-10., -10.] + [0.] * (self.env.action_dim + self.env.observation_dim)),
-                                                high=np.array([10., 10.] + [1.] * (self.env.action_dim + self.env.observation_dim)))
-        self.action_space = gym.spaces.Box(low=-np.array([10., 10.]),
-                                           high=np.array([10., 10.]))
+        self.observation_space = gym.spaces.Box(low=np.array([-5., -5.] + [0.] * (self.env.action_dim + self.env.observation_dim)),
+                                                high=np.array([5., 5.] + [1.] * (self.env.action_dim + self.env.observation_dim)))
+        self.action_space = gym.spaces.Box(low=-np.array([5., 5.]),
+                                           high=np.array([5., 5.]))
 
         self.attacker_power = power
 

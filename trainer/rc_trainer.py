@@ -106,6 +106,16 @@ class RCTrainer(Trainer):
         defender_model = DDPG(
             policy=self.get_policy_class(self.policy_params),
             env=env,
+            nb_train_steps=30,
+            nb_rollout_steps=100,
+            batch_size=128,
+            # action_noise=OrnsteinUhlenbeckActionNoise(mean=np.zeros(2), sigma=float(0.05) * np.ones(2)),
+            # nb_eval_steps=0,
+            # buffer_size=10000,
+            # actor_lr=1e-3,
+            # critic_lr=1e-2,
+            buffer_size=5_000,
+
             **self.rl_params,
             verbose=1,
             tensorboard_log=f'{self.prefix}/tb_logs' if self.training_params['tb_logging'] else None,
