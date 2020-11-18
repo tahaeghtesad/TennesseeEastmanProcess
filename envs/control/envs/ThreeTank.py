@@ -30,10 +30,10 @@ class ThreeTank(gym.Env):
         self.win_count = 0
 
     def q13(self, mu13=0.5, sn=0.00005):
-        return np.sign(self.x[0] - self.x[2]) * np.sqrt(2 * const.g * np.sqrt(np.abs(self.x[0] - self.x[2]))) * mu13 * sn
+        return np.sign(self.x[0] - self.x[2]) * np.sqrt(2 * const.g * np.abs(self.x[0] - self.x[2])) * mu13 * sn
 
     def q32(self, mu32=0.5, sn=0.00005):
-        return np.sign(self.x[2] - self.x[1]) * np.sqrt(2 * const.g * np.sqrt(np.abs(self.x[2] - self.x[1]))) * mu32 * sn
+        return np.sign(self.x[2] - self.x[1]) * np.sqrt(2 * const.g * np.abs(self.x[2] - self.x[1])) * mu32 * sn
 
     def q20(self, mu20=0.6, sn=0.00005):
         return np.sqrt(2 * const.g * self.x[1]) * mu20 * sn
@@ -76,7 +76,8 @@ class ThreeTank(gym.Env):
 
         self.episode_count += 1
         self.step_count = 0
-        self.x = self.tank_size.sample() if np.random.rand() < 0.5 else self.goal.copy()
+        #self.x = self.tank_size.sample() if np.random.rand() < 0.5 else self.goal.copy()
+        self.x = self.goal.copy()
         self.logger.debug(f'Reset... Starting Point: {self.x}')
         return self.x[:2]
 
