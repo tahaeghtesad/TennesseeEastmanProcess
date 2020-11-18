@@ -43,7 +43,7 @@ class RCTrainer(Trainer):
 
         return CustomPolicy
 
-    def train_attacker(self, defender, iteration, index):
+    def train_attacker(self, defender, iteration):
         # env params must have 'compromise_actuation_prob', 'compromise_observation_prob', and 'power'
         # rl params must have 'gamma', 'random_exploration'
         self.logger.info(f'Starting attacker training for {self.training_params["training_steps"]} steps.')
@@ -65,6 +65,10 @@ class RCTrainer(Trainer):
         attacker_model = DDPG(
             policy=self.get_policy_class(self.policy_params),
             env=env,
+            nb_train_steps=30,
+            nb_rollout_steps=100,
+            batch_size=128,
+            buffer_size=5_000,
             **self.rl_params,
             verbose=1,
             tensorboard_log=f'{self.prefix}/tb_logs' if self.training_params['tb_logging'] else None,
@@ -74,24 +78,20 @@ class RCTrainer(Trainer):
         attacker_model.learn(
             total_timesteps=self.training_params['training_steps'],
             callback=self.callback,
-            tb_log_name=f'attacker_{iteration}_{index}'
+            tb_log_name=f'attacker_{iteration}'
         )
 
-        attacker_model.save(f'{self.prefix}/params/attacker-{iteration}-{index}')
+        attacker_model.save(f'{self.prefix}/params/attacker-{iteration}')
 
-        def initializer():
-            ddpg_model = DDPG.load(f'{self.prefix}/params/attacker-{iteration}-{index}')
-            if self.training_params['attacker_history']:
-                if self.training_params['attacker_limited_history']:
-                    return LimitedHistoryAgent(ddpg_model)
-                else:
-                    return HistoryAgent(ddpg_model)
+        if self.training_params['attacker_history']:
+            if self.training_params['attacker_limited_history']:
+                return LimitedHistoryAgent(attacker_model)
             else:
-                return SimpleWrapperAgent(ddpg_model)
+                return HistoryAgent(attacker_model)
+        else:
+            return SimpleWrapperAgent(attacker_model)
 
-        return initializer
-
-    def train_defender(self, attacker, iteration, index):
+    def train_defender(self, attacker, iteration):
         self.logger.info(f'Starting defender training for {self.training_params["training_steps"]} steps.')
         env = gym.make('LimitedHistoritized-v0' if self.training_params['defender_limited_history'] else 'Historitized-v0',
                        env=f'{self.env_id}Def-v0',
@@ -109,13 +109,7 @@ class RCTrainer(Trainer):
             nb_train_steps=30,
             nb_rollout_steps=100,
             batch_size=128,
-            # action_noise=OrnsteinUhlenbeckActionNoise(mean=np.zeros(2), sigma=float(0.05) * np.ones(2)),
-            # nb_eval_steps=0,
-            # buffer_size=10000,
-            # actor_lr=1e-3,
-            # critic_lr=1e-2,
             buffer_size=5_000,
-
             **self.rl_params,
             verbose=1,
             tensorboard_log=f'{self.prefix}/tb_logs' if self.training_params['tb_logging'] else None,
@@ -125,22 +119,18 @@ class RCTrainer(Trainer):
         defender_model.learn(
             total_timesteps=self.training_params['training_steps'],
             callback=self.callback,
-            tb_log_name=f'defender_{iteration}_{index}'
+            tb_log_name=f'defender_{iteration}'
         )
 
-        defender_model.save(f'{self.prefix}/params/defender-{iteration}-{index}')
+        defender_model.save(f'{self.prefix}/params/defender-{iteration}')
 
-        def initializer():
-            ddpg_model = DDPG.load(f'{self.prefix}/params/defender-{iteration}-{index}')
-            if self.training_params['defender_history']:
-                if self.training_params['defender_limited_history']:
-                    return LimitedHistoryAgent(ddpg_model)
-                else:
-                    return HistoryAgent(ddpg_model)
+        if self.training_params['defender_history']:
+            if self.training_params['defender_limited_history']:
+                return LimitedHistoryAgent(defender_model)
             else:
-                return SimpleWrapperAgent(ddpg_model)
-
-        return initializer
+                return HistoryAgent(defender_model)
+        else:
+            return SimpleWrapperAgent(defender_model)
 
     def get_payoff(self, attacker: Agent, defender: Agent, repeat=20):
         env = gym.make(f'{self.env_id}Def-v0',
@@ -166,7 +156,7 @@ class RCTrainer(Trainer):
     def initialize_strategies(self):
         attacker = NoOpAgent(4)  # TODO this should not be a constant 4
         self.logger.info('Initializing a defender against NoOp attacker...')
-        defender = self.train_defender_parallel(attacker, 0)
+        defender = self.train_defender(attacker, 0)
 
         au, du = self.get_payoff(attacker, defender)
 

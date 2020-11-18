@@ -78,7 +78,7 @@ def do_marl(prefix, index, params, max_iter, trainer_class, nash_solver):
                                            trainer.defender_payoff_table)
         logging.info(f'Defender MSNE: {defender_strategy}')
         defender_ms.update_probabilities(defender_strategy)
-        attacker_policy = trainer.train_attacker_parallel(defender_ms, attacker_iteration)
+        attacker_policy = trainer.train_attacker(defender_ms, attacker_iteration)
         attacker_ms.add_policy(attacker_policy)
         payoffs = [trainer.get_payoff(attacker_policy, defender_policy) for defender_policy in defender_ms.policies]
         trainer.update_attacker_payoff_table(np.array([au for (au, du) in payoffs]),
@@ -92,7 +92,7 @@ def do_marl(prefix, index, params, max_iter, trainer_class, nash_solver):
                                            trainer.defender_payoff_table)
         logging.info(f'Attacker MSNE: {attacker_strategy}')
         attacker_ms.update_probabilities(attacker_strategy)
-        defender_policy = trainer.train_defender_parallel(attacker_ms, defender_iteration)
+        defender_policy = trainer.train_defender(attacker_ms, defender_iteration)
         defender_ms.add_policy(defender_policy)
         payoffs = [trainer.get_payoff(attacker_policy, defender_policy) for attacker_policy in attacker_ms.policies]
         trainer.update_defender_payoff_table(np.array([au for (au, du) in payoffs]),
@@ -256,7 +256,6 @@ def do_rc(env_id, prefix, index,
     }
 
     do_marl(prefix, index, params, max_iter, RCTrainer, find_zero_sum_mixed_ne_gambit)
-
 
 @click.group(invoke_without_command=True)
 @click.pass_context

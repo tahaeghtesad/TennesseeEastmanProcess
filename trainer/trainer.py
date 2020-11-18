@@ -32,49 +32,11 @@ class Trainer:
     def get_policy_class(self, policy_params):
         raise NotImplementedError()
 
-    def train_attacker(self, defender, iteration, index) -> Agent:
+    def train_attacker(self, defender, iteration):
         raise NotImplementedError()
 
-    def train_defender(self, attacker, iteration, index) -> Agent:
+    def train_defender(self, attacker, iteration):
         raise NotImplementedError()
-
-    def train_attacker_parallel(self, defender: Agent, iteration):
-        import concurrent.futures
-        with concurrent.futures.ThreadPoolExecutor(max_workers=self.training_params['concurrent_runs']) as executor:
-            futures = {executor.submit(self.train_attacker, defender, iteration, index): index for index in range(self.training_params['concurrent_runs'])}
-
-            best_util = -np.inf
-            best = None
-
-            for future in concurrent.futures.as_completed(futures):
-                attacker = future.result()()
-                au, du = self.get_payoff(attacker, defender)
-                self.logger.info(f'An attacker is done with the training, payoffs: ({au}, {du})')
-                if au > best_util:
-                    best_util = au
-                    best = attacker
-
-            best.save(f'{self.prefix}/attacker-{iteration}')
-            return best
-
-    def train_defender_parallel(self, attacker: Agent, iteration):
-        import concurrent.futures
-        with concurrent.futures.ThreadPoolExecutor(self.training_params['concurrent_runs']) as executor:
-            futures = {executor.submit(self.train_defender, attacker, iteration, index): index for index in range(self.training_params['concurrent_runs'])}
-
-            best_util = -np.inf
-            best = None
-
-            for future in concurrent.futures.as_completed(futures):
-                defender = future.result()()
-                au, du = self.get_payoff(attacker, defender)
-                self.logger.info(f'A defender is done with the training, payoffs: ({au}, {du})')
-                if du > best_util:
-                    best_util = du
-                    best = defender
-
-            best.save(f'{self.prefix}/defender-{iteration}')
-            return best
 
     def get_payoff(self, attacker: Agent, defender: Agent):
         raise NotImplementedError()
