@@ -70,9 +70,9 @@ class HistoryAgent(SimpleWrapperAgent):
         self.compromise = None
 
     def add_history(self, observation):
-        self.history.append(observation[:self.observation_dim])
+        self.history.append(observation)
         if len(self.history) == 1:
-            self.history = [observation[:self.observation_dim]] * self.history_length
+            self.history = [observation] * self.history_length
         if len(self.history) > self.history_length:
             del self.history[0]
 
@@ -80,7 +80,7 @@ class HistoryAgent(SimpleWrapperAgent):
         self.history = []
 
     def predict(self, observation, state=None, mask=None, deterministic=True):
-        self.add_history(observation[:self.observation_dim])
+        self.add_history(observation)
         return self.agent.predict(np.array(self.history).flatten(), state, mask, deterministic)[0]
 
 
