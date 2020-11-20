@@ -32,7 +32,7 @@ if __name__ == '__main__':
                  '--env_id', conf[0],
                  '--index', str(index),
                  '--max_iter', '1',
-                 '--training_params_training_steps', 500_000,
+                 '--training_params_training_steps', '500_000',
                  '--training_params_concurrent_runs', '1',
                  '--training_params_tb_logging', 'True',
                  '--training_params_attacker_history', 'False',
