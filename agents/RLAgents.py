@@ -2,7 +2,6 @@ import logging
 from typing import List
 
 import numpy as np
-from stable_baselines.common import BaseRLModel
 
 
 class Agent:
@@ -49,7 +48,7 @@ class SinglePolicyMixedStrategyAgent(MixedStrategyAgent):
 
 class SimpleWrapperAgent(Agent):
 
-    def __init__(self, agent: [Agent, BaseRLModel]) -> None:
+    def __init__(self, agent: [Agent]) -> None:
         super().__init__()
         self.agent = agent
 
@@ -62,17 +61,18 @@ class SimpleWrapperAgent(Agent):
 
 class HistoryAgent(SimpleWrapperAgent):
 
-    def __init__(self, agent: [Agent, BaseRLModel], observation_dim=2, history_length=12) -> None:
+    def __init__(self, agent: [Agent], observation_dim=2, history_length=12) -> None:
         super().__init__(agent)
         self.history_length = history_length
         self.observation_dim = observation_dim
         self.agent = agent
         self.history = []
+        self.compromise = None
 
     def add_history(self, observation):
-        self.history.append(observation)
+        self.history.append(observation[:self.observation_dim])
         if len(self.history) == 1:
-            self.history = [observation] * self.history_length
+            self.history = [observation[:self.observation_dim]] * self.history_length
         if len(self.history) > self.history_length:
             del self.history[0]
 
@@ -80,13 +80,13 @@ class HistoryAgent(SimpleWrapperAgent):
         self.history = []
 
     def predict(self, observation, state=None, mask=None, deterministic=True):
-        self.add_history(observation)
+        self.add_history(observation[:self.observation_dim])
         return self.agent.predict(np.array(self.history).flatten(), state, mask, deterministic)[0]
 
 
 class LimitedHistoryAgent(HistoryAgent):
 
-    def __init__(self, agent: [Agent, BaseRLModel], observation_dim=2, history_length=12, select=None) -> None:
+    def __init__(self, agent: [Agent], observation_dim=2, history_length=12, select=None) -> None:
         super().__init__(agent, observation_dim, history_length)
         self.select = [0, 4, 11] if select is None else select
 
