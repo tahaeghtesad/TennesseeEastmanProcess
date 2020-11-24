@@ -10,24 +10,30 @@ def run(params):
 
 if __name__ == '__main__':
     confs = [
-        ['BRP', 'True', 'True', '0.1'],
-        ['BRP', 'True', 'False', '0.1'],
-        ['BRP', 'False', 'False', '0.1'],
-        ['BRP', 'True', 'True', '0.0'],
-        ['BRP', 'True', 'False', '0.0'],
-        ['BRP', 'False', 'False', '0.0'],
+        ['BRP', 'True', '0.1', '128, 64'],
+        ['BRP', 'True', '0.1', '256, 128'],
+        ['BRP', 'True', '0.1', '128, 128'],
+        ['BRP', 'True', '0.1', '256, 128, 64'],
 
-        ['TT', 'True', 'True', '0.1'],
-        ['TT', 'True', 'False', '0.1'],
-        ['TT', 'False', 'False', '0.1'],
-        ['TT', 'True', 'True', '0.0'],
-        ['TT', 'True', 'False', '0.0'],
-        ['TT', 'False', 'False', '0.0'],
+        ['BRP', 'False', '0.1', '128, 64'],
+        ['BRP', 'False', '0.1', '256, 128'],
+        ['BRP', 'False', '0.1', '128, 128'],
+        ['BRP', 'False', '0.1', '256, 128, 64'],
+
+        ['BRP', 'True', '0.0', '128, 64'],
+        ['BRP', 'True', '0.0', '256, 128'],
+        ['BRP', 'True', '0.0', '128, 128'],
+        ['BRP', 'True', '0.0', '256, 128, 64'],
+
+        ['BRP', 'False', '0.0', '128, 64'],
+        ['BRP', 'False', '0.0', '256, 128'],
+        ['BRP', 'False', '0.0', '128, 128'],
+        ['BRP', 'False', '0.0', '256, 128, 64'],
     ]
-    index = 1001
+    index = 1500
 
     for conf in confs:
-        for _ in range(4):
+        for _ in range(10):
             run(['rc',
                  '--env_id', conf[0],
                  '--index', str(index),
@@ -38,13 +44,13 @@ if __name__ == '__main__':
                  '--training_params_attacker_history', 'False',
                  '--training_params_defender_history', conf[1],
                  '--training_params_attacker_limited_history', 'False',
-                 '--training_params_defender_limited_history', conf[2],
+                 '--training_params_defender_limited_history', 'False',
                  '--env_params_compromise_actuation_prob', '0.0',
                  '--env_params_compromise_observation_prob', '0.5',
                  '--env_params_noise', 'True',
-                 '--rl_params_random_exploration', conf[3],
+                 '--rl_params_random_exploration', conf[2],
                  '--rl_params_gamma', '0.9',
                  '--policy_params_activation', 'tanh',
-                 '--policy_params_layers', "25,25,25,25",
+                 '--policy_params_layers', conf[3],
                  ])
             index += 1
