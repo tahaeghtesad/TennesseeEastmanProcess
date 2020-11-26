@@ -2,10 +2,10 @@
 
 #SBATCH -J TEP
 #SBATCH -t 72:00:00
-#SBATCH -N 1 -n 8
+#SBATCH -N 1 -n 16
 #SBATCH --mem 8GB
-#SBATCH -p gpu
-#SBATCH --gres=gpu:1
+##SBATCH -p gpu
+##SBATCH --gres=gpu:1
 
 #SBATCH -A laszka
 
@@ -14,7 +14,7 @@
 ###module load cuDNN/7.5.0-CUDA-10.0.130
 
 source /home/${USER}/.bashrc
-conda activate tep
+conda activate tep-cpu
 cd /project/laszka/TennesseeEastmanProcess/
 export PATH=$PWD/gambit-project/:$PATH
 
