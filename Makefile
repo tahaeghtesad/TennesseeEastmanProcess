@@ -24,7 +24,9 @@ stop:
 		scancel -n TEP
 
 count:
-		squeue | grep TEP | wc -l
+		@echo Total Submitted: $(squeue | grep TEP | wc -l)
+		@echo Running $(squeue | grep TEP | grep R | wc -l)
+		@echo Waiting for resources $(squeue | grep TEP | grep PD | wc -l)
 
 list:
 		squeue -l | grep TEP
