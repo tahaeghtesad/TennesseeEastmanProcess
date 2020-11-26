@@ -1,3 +1,7 @@
+import multiprocessing
+import threading
+from time import time
+
 import gym
 from stable_baselines import DDPG
 
@@ -39,7 +43,7 @@ class Analyzer:
         return -r / repeat, r / repeat
 
     def load_agent(self):
-        dqn_agent = DDPG.load(f'{self.base_path}/defender-0.zip')
+        dqn_agent = DDPG.load(f'{self.base_path}/params/defender-0.zip')
         if self.params['training_params']['defender_history']:
             if self.params['training_params']['defender_limited_history']:
                 return LimitedHistoryAgent(dqn_agent)
@@ -74,17 +78,33 @@ class Analyzer:
 
 if __name__ == '__main__':
     with open('data.csv', 'w') as csv_file:
+
         writer = csv.writer(csv_file)
 
-        for i in tqdm(range(101, 146)):
-            analyzer = Analyzer(f'../runs/{i}')
+        info_row = Analyzer(f'../runs/back2/{1500}').param_names_to_list()
+        info_row += ['defender_payoff']
+        info_row = ['id'] + info_row
+        writer.writerow(info_row)
+
+        csv_writer_lock = threading.Lock()
+
+        pool = multiprocessing.pool.ThreadPool(8)
+
+        def extract(i):
+            start = time()
+            analyzer = Analyzer(f'../runs/back2/{i}')
             defender = analyzer.load_agent()
             attacker = NoOpAgent(4)
-            if i == 101:
-                info_row = analyzer.param_names_to_list()
-                info_row += ['defender_payoff']
-                writer.writerow(info_row)
             _, du = analyzer.payoff(attacker, defender)
             conf_row = analyzer.params_to_list()
             conf_row += [du]
-            writer.writerow(conf_row)
+            conf_row = [i] + conf_row
+            # conf_row = ['kir']
+            with csv_writer_lock:
+                writer.writerow(conf_row)
+                print(f'Done with agent {i}, took {time() - start:.3f}s')
+
+        # for i in tqdm(range(1500, 1659)):
+        #     extract(i)
+        pool.map(extract, [i for i in range(1500, 1659)])
+        # pool.close()

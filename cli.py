@@ -113,7 +113,6 @@ def to_bool(input):
 @click.option('--training_params_training_steps', default=500 * 1000,
               help='Number of training steps in each iteration of DO.',
               show_default=True)
-@click.option('--training_params_concurrent_runs', default=4, help='Number of concurrent runs', show_default=True)
 @click.option('--training_params_tb_logging', default=True, help='Whether to store Tensorboard logs', show_default=True)
 @click.option('--max_iter', default=15, help='Maximum iteration for DO.', show_default=True)
 @click.option('--training_params_include_heuristics', default=True, help='Whether to include the heuristics',
@@ -130,13 +129,14 @@ def to_bool(input):
 @click.option('--rl_params_gamma', default=0.99, help='Gamma', show_default=True)
 @click.option('--rl_params_double_q', default=False, help='Double_Q MLP Network', show_default=True)
 @click.option('--rl_params_prioritized_replay', default=False, help='Prioritized Replay', show_default=True)
+@click.option('--rl_params_concurrent_runs', default=4, help='Number of concurrent runs', show_default=True)
 @click.option('--policy_params_activation', default='relu', help='Activation Function', show_default=True)
 @click.option('--policy_params_layers', default='64, 64', help='MLP Network Layers', show_default=True)
 @click.option('--policy_params_dueling', default=True, help='Dueling MLP Network', show_default=True)
 @click.option('--policy_params_normalization', default=True, help='Layer Normalization', show_default=True)
 def do_mtd(prefix, index,
            training_params_training_steps,
-           training_params_concurrent_runs,
+           rl_params_concurrent_runs,
            training_params_tb_logging,
            max_iter,
            training_params_include_heuristics,
@@ -159,7 +159,6 @@ def do_mtd(prefix, index,
     params = {
         'training_params': {
             'training_steps': training_params_training_steps,
-            'concurrent_runs': training_params_concurrent_runs,
             'tb_logging': to_bool(training_params_tb_logging),
             'include_heuristics': to_bool(training_params_include_heuristics),
         },
@@ -177,7 +176,8 @@ def do_mtd(prefix, index,
             'exploration_final_eps': rl_params_exploration_final_eps,
             'gamma': rl_params_gamma,
             'double_q': to_bool(rl_params_double_q),
-            'prioritized_replay': rl_params_prioritized_replay
+            'prioritized_replay': rl_params_prioritized_replay,
+            'n_cpu_tf_sess': rl_params_concurrent_runs
         },
         'policy_params': {
             'act_fun': getattr(tf.nn, policy_params_activation),
@@ -199,14 +199,13 @@ def do_mtd(prefix, index,
               show_default=True)
 @click.option('--training_params_concurrent_runs', default=4, help='Number of concurrent runs', show_default=True)
 @click.option('--training_params_tb_logging', default=True, help='Whether to store Tensorboard logs', show_default=True)
-@click.option('--training_params_defender_history', default=False, help='Whether to have history for defender')
-@click.option('--training_params_attacker_history', default=False, help='Whether to have history for attacker')
-@click.option('--training_params_defender_limited_history', default=False, help='Wether to have limited history for defender')
-@click.option('--training_params_attacker_limited_history', default=False, help='Wether to have limited history for attacker')
+@click.option('--training_params_action_noise_sigma', default=.5, help='Action Noise for the learning agent')
 @click.option('--env_params_compromise_actuation_prob', default=0.5, help='Actuation compromise probability')
 @click.option('--env_params_compromise_observation_prob', default=0.5, help='Observation compromise probability')
 @click.option('--env_params_power', default=0.3, help='Power of attacker')
 @click.option('--env_params_noise', default=True, help='Whether to include noise to the env')
+@click.option('--env_params_history_length', default=12, help='Length of agent history')
+@click.option('--env_params_include_compromise', default=True, help='Whether to include compromise to observation')
 @click.option('--rl_params_random_exploration', default=0.1, help='Exploration Fraction', show_default=True)
 @click.option('--rl_params_gamma', default=0.90, help='Gamma', show_default=True)
 @click.option('--policy_params_activation', default='tanh', help='Activation Function', show_default=True)
@@ -216,10 +215,7 @@ def do_rc(env_id, prefix, index,
           training_params_training_steps,
           training_params_concurrent_runs,
           training_params_tb_logging,
-          training_params_attacker_history,
-          training_params_defender_history,
-          training_params_attacker_limited_history,
-          training_params_defender_limited_history,
+          training_params_action_noise_sigma,
           rl_params_random_exploration,
           rl_params_gamma,
           policy_params_activation,
@@ -227,23 +223,24 @@ def do_rc(env_id, prefix, index,
           env_params_compromise_actuation_prob,
           env_params_compromise_observation_prob,
           env_params_power,
-          env_params_noise):
+          env_params_noise,
+          env_params_history_length,
+          env_params_include_compromise):
     params = {
         'env_id': env_id,
         'training_params': {
             'training_steps': training_params_training_steps,
             'concurrent_runs': training_params_concurrent_runs,
             'tb_logging': to_bool(training_params_tb_logging),
-            'attacker_history': to_bool(training_params_attacker_history),
-            'defender_history': to_bool(training_params_defender_history),
-            'attacker_limited_history': to_bool(training_params_attacker_limited_history),
-            'defender_limited_history': to_bool(training_params_defender_limited_history),
+            'action_noise_sigma': training_params_action_noise_sigma
         },
         'env_params': {
             'compromise_actuation_prob': env_params_compromise_actuation_prob,
             'compromise_observation_prob': env_params_compromise_observation_prob,
+            'history_length': env_params_history_length,
             'power': env_params_power,
-            'noise': to_bool(env_params_noise)
+            'noise': to_bool(env_params_noise),
+            'include_compromise': to_bool(env_params_include_compromise)
         },
         'rl_params': {
             'random_exploration': rl_params_random_exploration,

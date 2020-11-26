@@ -95,11 +95,17 @@ class LimitedHistoryAgent(HistoryAgent):
         return self.agent.predict(np.array(self.history)[self.select].flatten(), state, mask, deterministic)[0]
 
 
-class NoOpAgent(Agent):
+class ConstantAgent(Agent):
 
-    def __init__(self, action_dim) -> None:
+    def __init__(self, action) -> None:
         super().__init__()
-        self.action_dim = action_dim
+        self.action = action
 
     def predict(self, observation, state=None, mask=None, deterministic=True):
-        return np.zeros(self.action_dim)
+        return self.action
+
+
+class ZeroAgent(ConstantAgent):
+
+    def __init__(self, action_dim):
+        super().__init__(np.zeros(action_dim))

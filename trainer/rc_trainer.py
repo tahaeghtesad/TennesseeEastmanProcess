@@ -1,11 +1,14 @@
 import gym
 from stable_baselines import DDPG
+from stable_baselines.common.noise import NormalActionNoise
 
 import envs
 from stable_baselines.ddpg import LnMlpPolicy
 
 from agents.RLAgents import Agent, SimpleWrapperAgent, MixedStrategyAgent, HistoryAgent, LimitedHistoryAgent, \
-    SinglePolicyMixedStrategyAgent, NoOpAgent
+    SinglePolicyMixedStrategyAgent, ZeroAgent
+from envs.control.adversarial_control import AdversarialControlEnv
+from envs.control.envs import BioReactorDefender, BioReactorAttacker
 from trainer.trainer import Trainer
 import tensorflow as tf
 import numpy as np
@@ -44,23 +47,13 @@ class RCTrainer(Trainer):
         return CustomPolicy
 
     def train_attacker(self, defender, iteration):
-        # env params must have 'compromise_actuation_prob', 'compromise_observation_prob', and 'power'
+        # env params must have 'compromise_actuation_prob', 'compromise_observation_prob', 'history_length', and 'power'
         # rl params must have 'gamma', 'random_exploration'
         self.logger.info(f'Starting attacker training for {self.training_params["training_steps"]} steps.')
-        env = gym.make('LimitedHistoritized-v0' if self.training_params['training_params_attacker_limited_history'] else 'Historitized-v0',
-                       env=f'{self.env_id}Att-v0',
-                       **self.env_params,
-                       defender=defender
-                       )\
-            if self.training_params['attacker_history'] else\
-            gym.make(f'{self.env_id}Att-v0',
-                     **self.env_params,
-                     defender=defender
-                     )
-        # env = gym.make(f'{self.env_id}Att-v0',
-        #                **self.env_params,
-        #                defender=defender
-        #                )
+        if self.env_id == 'BRP':
+            env = BioReactorAttacker(defender, **self.env_params)
+        else:
+            raise Exception('Invalid Environment')
 
         attacker_model = DDPG(
             policy=self.get_policy_class(self.policy_params),
@@ -69,9 +62,9 @@ class RCTrainer(Trainer):
             nb_rollout_steps=100,
             batch_size=128,
             buffer_size=5_000,
-            n_cpu_tf_sess=self.training_params['concurrent_runs'],
+            action_noise=NormalActionNoise(0, self.training_params['action_noise_sigma']),
             **self.rl_params,
-            verbose=1,
+            verbose=2,
             tensorboard_log=f'{self.prefix}/tb_logs' if self.training_params['tb_logging'] else None,
             full_tensorboard_log=self.training_params['tb_logging']
         )
@@ -84,26 +77,15 @@ class RCTrainer(Trainer):
 
         attacker_model.save(f'{self.prefix}/params/attacker-{iteration}')
 
-        if self.training_params['attacker_history']:
-            if self.training_params['attacker_limited_history']:
-                return LimitedHistoryAgent(attacker_model)
-            else:
-                return HistoryAgent(attacker_model)
-        else:
-            return SimpleWrapperAgent(attacker_model)
+        return SimpleWrapperAgent(attacker_model)
 
     def train_defender(self, attacker, iteration):
         self.logger.info(f'Starting defender training for {self.training_params["training_steps"]} steps.')
-        env = gym.make('LimitedHistoritized-v0' if self.training_params['defender_limited_history'] else 'Historitized-v0',
-                       env=f'{self.env_id}Def-v0',
-                       **self.env_params,
-                       attacker=attacker
-                       ) \
-            if self.training_params['defender_history'] else \
-            gym.make(f'{self.env_id}Def-v0',
-                     **self.env_params,
-                     attacker=attacker
-                     )
+        if self.env_id == 'BRP':
+            env = BioReactorDefender(attacker, **self.env_params)
+        else:
+            raise Exception('Invalid Environment')
+
         defender_model = DDPG(
             policy=self.get_policy_class(self.policy_params),
             env=env,
@@ -111,9 +93,9 @@ class RCTrainer(Trainer):
             nb_rollout_steps=100,
             batch_size=128,
             buffer_size=5_000,
-            n_cpu_tf_sess=self.training_params['concurrent_runs'],
+            action_noise=NormalActionNoise(0, self.training_params['action_noise_sigma']),
             **self.rl_params,
-            verbose=1,
+            verbose=2,
             tensorboard_log=f'{self.prefix}/tb_logs' if self.training_params['tb_logging'] else None,
             full_tensorboard_log=self.training_params['tb_logging']
         )
@@ -126,37 +108,32 @@ class RCTrainer(Trainer):
 
         defender_model.save(f'{self.prefix}/params/defender-{iteration}')
 
-        if self.training_params['defender_history']:
-            if self.training_params['defender_limited_history']:
-                return LimitedHistoryAgent(defender_model)
-            else:
-                return HistoryAgent(defender_model)
-        else:
-            return SimpleWrapperAgent(defender_model)
+        return SimpleWrapperAgent(defender_model)
 
     def get_payoff(self, attacker: Agent, defender: Agent, repeat=20):
-        env = gym.make(f'{self.env_id}Def-v0',
-                       **self.env_params,
-                       attacker=attacker
-                       )
+        if self.env_id == 'BRP':
+            env = AdversarialControlEnv('BRP-v0', attacker, defender, **self.env_params)
+        else:
+            raise Exception('Invalid Environment')
 
-        r = 0
+        ra = 0
+        rd = 0
 
         for _ in range(repeat):
-            def_obs = env.reset()
+            env.reset()
             done = False
             iter = 0
             while not done:
-                action = defender.predict(def_obs)
-                def_obs, reward, done, info = env.step(action)
+                (att_obs, def_obs), (reward_a, reward_d), done, info = env.step()
 
-                r += reward * self.rl_params['gamma'] ** iter
+                ra += reward_a * self.rl_params['gamma'] ** iter
+                rd += reward_d * self.rl_params['gamma'] ** iter
                 iter += 1
 
-        return -r / repeat, r / repeat
+        return ra / repeat, rd / repeat
 
     def initialize_strategies(self):
-        attacker = NoOpAgent(4)  # TODO this should not be a constant 4
+        attacker = ZeroAgent(4)  # TODO this should not be a constant 4
         self.logger.info('Initializing a defender against NoOp attacker...')
         defender = self.train_defender(attacker, 0)
 
