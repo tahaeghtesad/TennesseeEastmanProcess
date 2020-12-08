@@ -2,7 +2,7 @@
 
 #SBATCH -J TEP
 #SBATCH -t 2:00:00
-#SBATCH -N 1 -n 4
+#SBATCH -N 1 -n 2
 #SBATCH --mem 8GB
 ##SBATCH -p gpu
 ##SBATCH --gres=gpu:1
