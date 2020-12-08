@@ -3,7 +3,9 @@ import sys
 
 import click
 import numpy as np
+from mpi4py import MPI
 
+from agents.RLAgents import ZeroAgent
 from trainer import MTDTrainer, RCTrainer
 import tensorflow as tf
 from util.nash_helpers import find_general_sum_mixed_ne, find_zero_sum_mixed_ne_gambit
@@ -109,7 +111,45 @@ def do_marl(prefix, index, params, max_iter, trainer_class, nash_solver):
         trainer.update_defender_payoff_table(np.array([au for (au, du, _) in payoffs]),
                                              np.array([du for (au, du, _) in payoffs]))
         defender_iteration += 1
-        logging.info(f'MSNE Attacker vs New Defender Payoff: {trainer.get_payoff(attacker_ms, defender_policy)}')
+        au, du, _ = trainer.get_payoff(attacker_ms, defender_policy)
+        wandb.log({'payoffs/attacker': au, 'payoffs/defender': du})
+        logging.info(f'MSNE Attacker vs New Defender Payoff: {au, du}')
+
+    # wandb.run.summary.update({'base_defender_payoff': du})
+
+    # attacker_strategy, defender_strategy = nash_solver(trainer.attacker_payoff_table,
+    #                                                    trainer.defender_payoff_table)
+    # compromise = np.concatenate(
+    #     (np.random.rand(2) < params['env_params']['compromise_observation_prob'],
+    #      np.random.rand(2) < params['env_params']['compromise_actuation_prob'])
+    #     , axis=0).astype(np.float)
+    #
+    # _, _, no_attack = trainer.get_payoff(
+    #     attacker_ms.policies[0],
+    #     defender_ms.policies[0],
+    #     repeat=1,
+    #     compromise=compromise
+    # )
+    #
+    # _, _, no_defense = trainer.get_payoff(
+    #     attacker_ms.policies[np.argmax(attacker_strategy)],
+    #     defender_ms.policies[0],
+    #     repeat=1,
+    #     compromise=compromise
+    # )
+    #
+    # _, _, defense = trainer.get_payoff(
+    #     attacker_ms.policies[np.argmax(attacker_strategy)],
+    #     defender_ms.policies[np.argmax(defender_strategy)],
+    #     repeat=1,
+    #     compromise=compromise
+    # )
+
+    # wandb.run.summary['defense'] = defense
+    # wandb.run.summary['no_attack'] = no_attack
+    # wandb.run.summary['no_defense'] = no_defense
+    # wandb.run.summary.update({})
+    run.finish(0)
 
 
 def to_bool(input):
@@ -218,6 +258,7 @@ def do_mtd(prefix, index,
 @click.option('--env_params_noise', default=True, help='Whether to include noise to the env')
 @click.option('--env_params_history_length', default=12, help='Length of agent history')
 @click.option('--env_params_include_compromise', default=True, help='Whether to include compromise to observation')
+@click.option('--env_params_test_env', default=False, help='Whether to use set point as starting point of env')
 @click.option('--rl_params_random_exploration', default=0.1, help='Exploration Fraction', show_default=True)
 @click.option('--rl_params_gamma', default=0.90, help='Gamma', show_default=True)
 @click.option('--policy_params_activation', default='tanh', help='Activation Function', show_default=True)
@@ -237,7 +278,8 @@ def do_rc(env_id, prefix, index,
           env_params_power,
           env_params_noise,
           env_params_history_length,
-          env_params_include_compromise):
+          env_params_include_compromise,
+          env_params_test_env):
     params = {
         'env_id': env_id,
         'training_params': {
@@ -252,7 +294,8 @@ def do_rc(env_id, prefix, index,
             'history_length': env_params_history_length,
             'power': env_params_power,
             'noise': to_bool(env_params_noise),
-            'include_compromise': to_bool(env_params_include_compromise)
+            'include_compromise': to_bool(env_params_include_compromise),
+            'test_env': env_params_test_env
         },
         'rl_params': {
             'random_exploration': rl_params_random_exploration,

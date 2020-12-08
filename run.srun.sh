@@ -1,8 +1,8 @@
 #!/bin/bash
 
 #SBATCH -J TEP
-#SBATCH -t 72:00:00
-#SBATCH -N 1 -n 16
+#SBATCH -t 2:00:00
+#SBATCH -N 1 -n 4
 #SBATCH --mem 8GB
 ##SBATCH -p gpu
 ##SBATCH --gres=gpu:1

@@ -9,54 +9,56 @@ def run(params):
 
 
 if __name__ == '__main__':
-    confs = [
-        ['BRP', '0.01', 'True', '1'],
-        ['BRP', '0.00', 'True', '1'],
-        ['BRP', '0.01', 'False', '1'],
-        ['BRP', '0.00', 'False', '1'],
 
-        ['BRP', '0.01', 'True', '2'],
-        ['BRP', '0.00', 'True', '2'],
-        ['BRP', '0.01', 'False', '2'],
-        ['BRP', '0.00', 'False', '2'],
-
-        ['BRP', '0.01', 'True', '4'],
-        ['BRP', '0.00', 'True', '4'],
-        ['BRP', '0.01', 'False', '4'],
-        ['BRP', '0.005', 'False', '4'],
-
-        ['BRP', '0.01', 'True', '16'],
-        ['BRP', '0.00', 'True', '16'],
-        ['BRP', '0.01', 'False', '16'],
-        ['BRP', '0.00', 'False', '16'],
-    ]
-
-    index = 3000
+    index = 6000
     count = 0
-
-    for conf in confs:
-        for cap in ['0.0', '0.5', '1']:
-            for cop in ['0.0', '0.5', '1']:
-                for _ in range(10):
-                    run(['rc',
-                         '--env_id', conf[0],
-                         '--index', f'{index}',
-                         '--max_iter', '20',
-                         '--training_params_training_steps', '300_000',
-                         '--training_params_concurrent_runs', '8',
-                         '--training_params_tb_logging', 'False',
-                         '--training_params_action_noise_sigma', conf[1],
-                         '--env_params_compromise_actuation_prob', cap,
-                         '--env_params_compromise_observation_prob', cop,
-                         '--env_params_noise', conf[2],
-                         '--env_params_history_length', conf[3],
-                         '--env_params_include_compromise', 'True',
-                         '--rl_params_gamma', '0.90',
-                         '--rl_params_random_exploration', '0.0',
-                         '--policy_params_activation', 'tanh',
-                         '--policy_params_layers', '25,25,25,25'
-                         ])
-                    index += 1
-                    count += 1
+    for ts in ['300_000', '100_000', '500_000']:
+        for s in ['0.01', '0.001', '0.1', '0.5']:
+            for n in ['True', 'False']:
+                for te in ['True', 'False']:
+                    for hl in ['1', '2', '4', '8', '16']:
+                        for g in ['0.9', '.99', '0.8', '.5']:
+                            for e in ['.00', '0.01', '0.1', '.5']:
+                                for a in ['tanh', 'sigmoid', 'relu', 'elu']:
+                                    for l in ['16',
+                                              '16, 16',
+                                              '16, 16, 16',
+                                              '16, 16, 16, 16',
+                                              '32',
+                                              '32, 32',
+                                              '32, 32, 32',
+                                              '25, 25, 25, 25',
+                                              '25, 25, 25, 25, 25',
+                                              '25, 25, 25',
+                                              '25, 25',
+                                              '128',
+                                              '256',
+                                              '128, 64',
+                                              '64, 32',
+                                              '128, 64, 32',
+                                              '128, 64, 32, 16'
+                                              ]:
+                                        for _ in range(6):
+                                            run(['rc',
+                                                 '--env_id', 'BRP',
+                                                 '--index', f'{index}',
+                                                 '--max_iter', '1',
+                                                 '--training_params_training_steps', ts,
+                                                 '--training_params_concurrent_runs', '4',
+                                                 '--training_params_tb_logging', 'False',
+                                                 '--training_params_action_noise_sigma', s,
+                                                 '--env_params_compromise_actuation_prob', '0',
+                                                 '--env_params_compromise_observation_prob', '0',
+                                                 '--env_params_noise', n,
+                                                 '--env_params_history_length', hl,
+                                                 '--env_params_include_compromise', 'True',
+                                                 '--env_params_test_env', te,
+                                                 '--rl_params_gamma', g,
+                                                 '--rl_params_random_exploration', e,
+                                                 '--policy_params_activation', a,
+                                                 '--policy_params_layers', l
+                                                 ])
+                                            index += 1
+                                            count += 1
 
     print(f'Total {count} jobs were executed.')
