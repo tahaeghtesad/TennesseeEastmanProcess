@@ -13,13 +13,13 @@ if __name__ == '__main__':
 
     index = 6000
     count = 0
-    for ts in ['300_000', '100_000']:
+    for ts in ['300_000']:
         for s in ['0.01', '0.0']:
             for n in ['True', 'False']:
                 for te in ['True', 'False']:
                     for hl in ['1', '4', '8']:
                         for g in ['0.9', '.5']:
-                            for e in ['.00', '0.1', '.5']:
+                            for e in ['.00', '0.1']:
                                 for a in ['tanh', 'elu']:
                                     for l in [
                                               '25, 25, 25, 25',
