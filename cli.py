@@ -59,6 +59,7 @@ def do_marl(prefix, index, params, max_iter, trainer_class, nash_solver):
     run.save(f'{prefix}/{index}/info.json')
     run.save(f'{prefix}/{index}/log.log')
     run.save(f'{prefix}/{index}/params/*')
+    run.save(f'{prefix}/{index}/*.npy')
 
     trainer = trainer_class(
         f'{prefix}/{index}',

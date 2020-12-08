@@ -90,12 +90,12 @@ def mu(x2: float, mu_max: float = 0.53, km: float = 0.12, k1: float = 0.4545) ->
 class BioReactorAttacker(gym.Env):  # This is a noise generator attacker.
 
     def __init__(self, defender: Agent, compromise_actuation_prob: float, compromise_observation_prob: float, power: float = 0.3, noise=True,
-                 history_length=12, include_compromise=True) -> None:
+                 history_length=12, include_compromise=True, test_env=False) -> None:
         self.include_compromise = include_compromise
         self.logger = logging.getLogger(__class__.__name__)
 
         self.adversarial_control_env = AdversarialControlEnv('BRP-v0', None, defender, compromise_actuation_prob,
-                                                             compromise_observation_prob, history_length, include_compromise, noise, power)
+                                                             compromise_observation_prob, history_length, include_compromise, noise, power, test_env)
 
         self.observation_space = gym.spaces.Box(low=np.array([-5., -5.] * history_length + [0.] * (self.adversarial_control_env.env.action_dim + self.adversarial_control_env.env.observation_dim)) if self.include_compromise else np.array([-5., -5.] * history_length),
                                                 high=np.array([5., 5.]  * history_length + [0.] * (self.adversarial_control_env.env.action_dim + self.adversarial_control_env.env.observation_dim)) if self.include_compromise else np.array([-5., -5.] * history_length))

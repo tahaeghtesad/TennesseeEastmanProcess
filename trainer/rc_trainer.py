@@ -37,11 +37,11 @@ class RCTrainer(Trainer):
                             summary = tf.Summary(
                                 value=[tf.Summary.Value(tag=f'env/{var}{i}', simple_value=locals_['info'][var][i])])
                             locals_['writer'].add_summary(summary, self_.num_timesteps)
-                        wandb.log({f'env/{var}{i}': locals_['info'][var][i]}, step=self_.num_timesteps)
-        if 'reward' in locals_:
-            wandb.log({f'rewards/step': locals_['reward']}, step=self_.num_timesteps)
-        if 'episode_reward' in locals_:
-            wandb.log({f'rewards/episode': locals_['episode_reward']}, step=self_.num_timesteps)
+                        # wandb.log({f'env/{var}{i}': locals_['info'][var][i]}, step=self_.num_timesteps)
+        # if 'reward' in locals_:
+        #     wandb.log({f'rewards/step': locals_['reward']}, step=self_.num_timesteps)
+        # if 'episode_reward' in locals_:
+        #     wandb.log({f'rewards/episode': locals_['episode_reward']}, step=self_.num_timesteps)
         return True
 
     def get_policy_class(self, policy_params):
@@ -126,7 +126,7 @@ class RCTrainer(Trainer):
         rd = 0
         total_steps = 1
 
-        columns = ['reward', 'a_0', 'a_1', 'd_0', 'd_1', 'u_0', 'u_1', 'dx_0', 'dx_1']
+        columns = ['reward', 'x_0', 'x_1', 'a_0', 'a_1', 'd_0', 'd_1', 'u_0', 'u_1', 'dx_0', 'dx_1', 'o_0', 'o_1']
         report_table = wandb.Table(columns=['step'] + columns)
 
         for _ in range(repeat):
@@ -144,6 +144,8 @@ class RCTrainer(Trainer):
                 report_table.add_data(
                     total_steps,
                     reward_d,
+                    info['x'][0],
+                    info['x'][1],
                     info['a'][0],
                     info['a'][1],
                     info['d'][0],
@@ -151,8 +153,26 @@ class RCTrainer(Trainer):
                     info['u'][0],
                     info['u'][1],
                     info['dx'][0],
-                    info['dx'][1]
+                    info['dx'][1],
+                    info['o'][0],
+                    info['o'][1]
                 )
+
+                wandb.log({
+                    'test_env/reward': reward_d,
+                    # 'test/a0': info['a'][0],
+                    # 'test/a1': info['a'][1],
+                    # 'test/d0': info['d'][0],
+                    # 'test/d1': info['d'][1],
+                    'test/u0': info['u'][0],
+                    'test/u1': info['u'][1],
+                    'test/dx0': info['dx'][0],
+                    'test/dx1': info['dx'][1],
+                    'test/x0': info['x'][0],
+                    'test/x1': info['x'][1],
+                    # 'test/o0': info['o'][0],
+                    # 'test/o1': info['o'][1]
+                })
 
         # log = {}
         # for column in columns:
