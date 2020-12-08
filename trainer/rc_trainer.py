@@ -1,4 +1,5 @@
 import gym
+import wandb
 from stable_baselines import DDPG
 from stable_baselines.common.noise import NormalActionNoise
 
@@ -14,7 +15,6 @@ import tensorflow as tf
 import numpy as np
 import logging
 
-
 class RCTrainer(Trainer):
 
     def __init__(self, prefix, env_id, env_params=None, rl_params=None, policy_params=None,
@@ -29,13 +29,19 @@ class RCTrainer(Trainer):
 
         variables = ['u', 'x', 'dx', 'a', 'o']
 
-        if 'info' in locals_ and 'writer' in locals_ and locals_['writer'] is not None:
+        if 'info' in locals_:
             for var in variables:
                 if var in locals_['info']:
                     for i in range(len(locals_['info'][var])):
-                        summary = tf.Summary(
-                            value=[tf.Summary.Value(tag=f'env/{var}{i}', simple_value=locals_['info'][var][i])])
-                        locals_['writer'].add_summary(summary, self_.num_timesteps)
+                        if 'writer' in locals_ and locals_['writer'] is not None:
+                            summary = tf.Summary(
+                                value=[tf.Summary.Value(tag=f'env/{var}{i}', simple_value=locals_['info'][var][i])])
+                            locals_['writer'].add_summary(summary, self_.num_timesteps)
+                        wandb.log({f'env/{var}{i}': locals_['info'][var][i]}, step=self_.num_timesteps)
+        if 'reward' in locals_:
+            wandb.log({f'rewards/step': locals_['reward']}, step=self_.num_timesteps)
+        if 'episode_reward' in locals_:
+            wandb.log({f'rewards/episode': locals_['episode_reward']}, step=self_.num_timesteps)
         return True
 
     def get_policy_class(self, policy_params):
@@ -110,7 +116,7 @@ class RCTrainer(Trainer):
 
         return SimpleWrapperAgent(defender_model)
 
-    def get_payoff(self, attacker: Agent, defender: Agent, repeat=20):
+    def get_payoff(self, attacker: Agent, defender: Agent, repeat=20, compromise=None):
         if self.env_id == 'BRP':
             env = AdversarialControlEnv('BRP-v0', attacker, defender, **self.env_params)
         else:
@@ -118,9 +124,13 @@ class RCTrainer(Trainer):
 
         ra = 0
         rd = 0
+        total_steps = 1
+
+        columns = ['reward', 'a_0', 'a_1', 'd_0', 'd_1', 'u_0', 'u_1', 'dx_0', 'dx_1']
+        report_table = wandb.Table(columns=['step'] + columns)
 
         for _ in range(repeat):
-            env.reset()
+            env.reset(compromise)
             done = False
             iter = 0
             while not done:
@@ -129,15 +139,33 @@ class RCTrainer(Trainer):
                 ra += reward_a * self.rl_params['gamma'] ** iter
                 rd += reward_d * self.rl_params['gamma'] ** iter
                 iter += 1
+                total_steps += 1
 
-        return ra / repeat, rd / repeat
+                report_table.add_data(
+                    total_steps,
+                    reward_d,
+                    info['a'][0],
+                    info['a'][1],
+                    info['d'][0],
+                    info['d'][1],
+                    info['u'][0],
+                    info['u'][1],
+                    info['dx'][0],
+                    info['dx'][1]
+                )
+
+        # log = {}
+        # for column in columns:
+        #     log[column] = wandb.plot.line(report_table, 'step', column)
+
+        return ra / repeat, rd / repeat, report_table
 
     def initialize_strategies(self):
         attacker = ZeroAgent(4)  # TODO this should not be a constant 4
         self.logger.info('Initializing a defender against NoOp attacker...')
         defender = self.train_defender(attacker, 0)
 
-        au, du = self.get_payoff(attacker, defender)
+        au, du, _ = self.get_payoff(attacker, defender)
 
         self.defender_payoff_table = np.zeros((1, 1))
         self.attacker_payoff_table = np.zeros((1, 1))
@@ -153,5 +181,7 @@ class RCTrainer(Trainer):
 
         attacker_ms.update_probabilities(np.ones(1))
         defender_ms.update_probabilities(np.ones(1))
+
+        wandb.run.summary.update({'base_defender_payoff': du})
 
         return attacker_ms, defender_ms

@@ -7,6 +7,8 @@ import gym
 from agents.RLAgents import Agent
 from envs.control.control_env import ControlEnv
 
+import wandb
+
 
 class AdversarialControlEnv:
     def __init__(self,

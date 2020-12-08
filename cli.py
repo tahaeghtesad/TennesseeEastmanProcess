@@ -10,6 +10,7 @@ from util.nash_helpers import find_general_sum_mixed_ne, find_zero_sum_mixed_ne_
 import json
 import os
 import copy
+import wandb
 
 
 def init_logger(prefix, index):
@@ -48,12 +49,18 @@ def do_marl(prefix, index, params, max_iter, trainer_class, nash_solver):
 
     with open(f'{prefix}/{index}/info.json', 'w') as fd:
         params_back = copy.deepcopy(params)
+        params_back['policy_params']['layers'] = str(params_back['policy_params']['layers'])
         params_back['policy_params']['act_fun'] = params_back['policy_params']['act_fun'].__name__
         json.dump(params_back, fd)
 
+    run = wandb.init(project='tep', config=params_back, dir=f'{prefix}/{index}')
+    run.save(f'{prefix}/{index}/info.json')
+    run.save(f'{prefix}/{index}/log.log')
+    run.save(f'{prefix}/{index}/params/*')
+
     trainer = trainer_class(
         f'{prefix}/{index}',
-        **params
+        **params,
     )
 
     logger.info('Initializing Heuristic Strategies...')
@@ -65,6 +72,8 @@ def do_marl(prefix, index, params, max_iter, trainer_class, nash_solver):
     attacker_ms.update_probabilities(attacker_strategy)
     defender_ms.update_probabilities(defender_strategy)
 
+    wandb.log({'payoffs/attacker': trainer.attacker_payoff_table[0, 0], 'payoffs/defender': trainer.defender_payoff_table[0, 0]})
+
     attacker_iteration = len(attacker_ms.policies)
     defender_iteration = len(defender_ms.policies)
 
@@ -74,29 +83,31 @@ def do_marl(prefix, index, params, max_iter, trainer_class, nash_solver):
     while attacker_iteration < max_iter or defender_iteration < max_iter:
         # Train Attacker
         logger.info(f'Training Attacker {attacker_iteration}')
-        _, defender_strategy = nash_solver(trainer.attacker_payoff_table,
+        attacker_strategy, defender_strategy = nash_solver(trainer.attacker_payoff_table,
                                            trainer.defender_payoff_table)
         logging.info(f'Defender MSNE: {defender_strategy}')
         defender_ms.update_probabilities(defender_strategy)
         attacker_policy = trainer.train_attacker(defender_ms, attacker_iteration)
         attacker_ms.add_policy(attacker_policy)
         payoffs = [trainer.get_payoff(attacker_policy, defender_policy) for defender_policy in defender_ms.policies]
-        trainer.update_attacker_payoff_table(np.array([au for (au, du) in payoffs]),
-                                             np.array([du for (au, du) in payoffs]))
+        trainer.update_attacker_payoff_table(np.array([au for (au, du, _) in payoffs]),
+                                             np.array([du for (au, du, _) in payoffs]))
         attacker_iteration += 1
-        logging.info(f'New Attacker vs MSNE Defender Payoff: {trainer.get_payoff(attacker_policy, defender_ms)}')
+        au, du, _ = trainer.get_payoff(attacker_policy, defender_ms)
+        wandb.log({'payoffs/attacker': au, 'payoffs/defender': du})
+        logging.info(f'New Attacker vs MSNE Defender Payoff: {au, du}')
 
         # Train Defender
         logger.info(f'Training Defender {defender_iteration}')
-        attacker_strategy, _ = nash_solver(trainer.attacker_payoff_table,
+        attacker_strategy, defender_strategy = nash_solver(trainer.attacker_payoff_table,
                                            trainer.defender_payoff_table)
         logging.info(f'Attacker MSNE: {attacker_strategy}')
         attacker_ms.update_probabilities(attacker_strategy)
         defender_policy = trainer.train_defender(attacker_ms, defender_iteration)
         defender_ms.add_policy(defender_policy)
         payoffs = [trainer.get_payoff(attacker_policy, defender_policy) for attacker_policy in attacker_ms.policies]
-        trainer.update_defender_payoff_table(np.array([au for (au, du) in payoffs]),
-                                             np.array([du for (au, du) in payoffs]))
+        trainer.update_defender_payoff_table(np.array([au for (au, du, _) in payoffs]),
+                                             np.array([du for (au, du, _) in payoffs]))
         defender_iteration += 1
         logging.info(f'MSNE Attacker vs New Defender Payoff: {trainer.get_payoff(attacker_ms, defender_policy)}')
 
@@ -186,6 +197,7 @@ def do_mtd(prefix, index,
             'layer_norm': to_bool(policy_params_normalization)
         }
     }
+
     do_marl(prefix, index, params, max_iter, MTDTrainer, find_general_sum_mixed_ne)
 
 
