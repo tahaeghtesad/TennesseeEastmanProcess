@@ -18,7 +18,8 @@ class AdversarialControlEnv:
                  history_length=12,
                  include_compromise=True,
                  noise=True,
-                 power=.3) -> None:
+                 power=.3,
+                 test_env=False) -> None:
 
         super().__init__()
         self.attacker = attacker
@@ -35,7 +36,7 @@ class AdversarialControlEnv:
         self.defender_history = None
 
         if isinstance(env, str):
-            self.env = gym.make(f'{env}', noise=noise)
+            self.env = gym.make(f'{env}', noise=noise, test_env=test_env)
         elif isinstance(env, ControlEnv):
             self.env = env
         else:
@@ -69,18 +70,19 @@ class AdversarialControlEnv:
 
         info['a'] = attacker_action[self.env.observation_dim:]
         info['o'] = attacker_action[:self.env.observation_dim]
+        info['d'] = defender_action
 
         return (np.concatenate((np.array(self.attacker_history).flatten(), self.compromise), axis=0) if self.include_compromise else np.array(self.attacker_history).flatten(),
                 np.concatenate((np.array(self.defender_history).flatten(), self.compromise), axis=0) if self.include_compromise else np.array(self.defender_history).flatten()),\
                (-reward, reward), done, info
 
-    def reset(self):
+    def reset(self, compromise=None):
         obs = self.env.reset()
 
         self.compromise = np.concatenate(
             (np.random.rand(self.env.observation_dim) < self.compromise_observation_prob,
              np.random.rand(self.env.action_dim) < self.compromise_actuation_prob)
-            , axis=0).astype(np.float)
+            , axis=0).astype(np.float) if compromise is None else compromise
 
         self.defender_history = [obs] * self.history_length
         self.attacker_history = [obs] * self.history_length
@@ -90,3 +92,6 @@ class AdversarialControlEnv:
 
     def get_compromise(self):
         return self.compromise
+
+    def set_compromise(self, compromise):
+        self.compromise = compromise

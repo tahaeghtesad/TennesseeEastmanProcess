@@ -76,8 +76,8 @@ class ThreeTank(gym.Env):
 
         self.episode_count += 1
         self.step_count = 0
-        self.x = self.tank_size.sample() if np.random.rand() < 0.5 else self.goal.copy()
-        # self.x = self.goal.copy()
+        # self.x = self.tank_size.sample() if np.random.rand() < 0.5 else self.goal.copy()
+        self.x = self.goal.copy()
         self.logger.debug(f'Reset... Starting Point: {self.x}')
         return self.x[:2]
 

@@ -1,22 +1,27 @@
 import gym
 import numpy as np
 import logging
-from enum import Enum
 from typing import *
 
 from agents.RLAgents import Agent, ConstantAgent
 from envs.control.adversarial_control import AdversarialControlEnv
+from envs.control.control_env import ControlEnv
 
 
-class BioReactor(gym.Env):
+class BioReactor(ControlEnv):
 
-    def __init__(self, noise=True) -> None:
-        super().__init__()
+    def __init__(self, test_env=False, noise=True) -> None:
+        super().__init__(test_env, noise)
         self.logger = logging.getLogger(__class__.__name__)
         self.x = np.array([0., 0.])
 
-        self.action_space = gym.spaces.Box(low=-np.array([5.0, 5.0]), high=np.array([5.0, 5.0]))
-        self.observation_space = gym.spaces.Box(low=-np.array([5., 5.]), high=np.array([5., 5.]))
+        self.action_space = gym.spaces.Box(low=np.array([0.0, 3.0]), high=np.array([1.0, 6.0]))
+        self.observation_space = gym.spaces.Box(low=np.array([0.6, 1.0]), high=np.array([1.2, 2.]))
+
+        # self.observation_space = gym.spaces.Box(low=np.array([0.6, 1] * history_length + [0.] * (self.adversarial_control_env.env.action_dim + self.adversarial_control_env.env.observation_dim)) if self.include_compromise else np.array([-5., -5.] * history_length),
+        #                                         high=np.array([1.2, 2.] * history_length + [1.] * (self.adversarial_control_env.env.action_dim + self.adversarial_control_env.env.observation_dim)) if self.include_compromise else np.array([5., 5.] * history_length))
+        # self.action_space = gym.spaces.Box(low=-np.array([0.0, 3.0]),
+        #                                    high=np.array([1.0, 6.0]))
 
         self.action_dim = 2
         self.observation_dim = 2
@@ -27,7 +32,6 @@ class BioReactor(gym.Env):
         self.highest_reward = -np.inf
 
         self.goal = np.array([0.99510292, 1.5122427])  # Unstable
-        self.noise = noise
 
         self.win_count = 0
 
@@ -67,8 +71,11 @@ class BioReactor(gym.Env):
 
         self.episode_count += 1
         self.step_count = 0
-        self.x = self.goal.copy()
-        # self.x = self.observation_space.sample() if np.random.rand() < 0.5 else self.goal.copy()
+        # self.x = self.goal.copy()
+        if self.test_env:
+            self.x = self.goal.copy()
+        else:
+            self.x = self.observation_space.sample()
         self.logger.debug(f'Reset... Starting Point: {self.x}')
         return self.x
 
@@ -114,20 +121,23 @@ class BioReactorAttacker(gym.Env):  # This is a noise generator attacker.
 
 class BioReactorDefender(gym.Env):
 
-    def __init__(self, attacker: Agent, compromise_actuation_prob: float, compromise_observation_prob: float, power: float = 0.3, noise=True,
+    def __init__(self, attacker: Agent, compromise_actuation_prob: float, compromise_observation_prob: float, power: float = 0.3, noise=True, test_env=False,
                  history_length=12, include_compromise=True) -> None:
         self.include_compromise = include_compromise
         self.logger = logging.getLogger(__class__.__name__)
 
         self.adversarial_control_env = AdversarialControlEnv('BRP-v0', attacker, None, compromise_actuation_prob,
-                                                             compromise_observation_prob, history_length, include_compromise, noise, power)
+                                                             compromise_observation_prob, history_length, include_compromise, noise, power, test_env)
 
-        self.observation_space = gym.spaces.Box(low=np.array([-5., -5.] * history_length + [0.] * (self.adversarial_control_env.env.action_dim + self.adversarial_control_env.env.observation_dim)) if self.include_compromise else np.array([-5., -5.] * history_length),
-                                                high=np.array([5., 5.] * history_length + [1.] * (self.adversarial_control_env.env.action_dim + self.adversarial_control_env.env.observation_dim)) if self.include_compromise else np.array([5., 5.] * history_length))
-        self.action_space = gym.spaces.Box(low=-np.array([5., 5.]),
-                                           high=np.array([5., 5.]))
+        self.observation_space = gym.spaces.Box(low=np.tile(self.adversarial_control_env.env.observation_space.low, history_length),
+                                                high=np.tile(self.adversarial_control_env.env.observation_space.high, history_length))
+        if include_compromise:
+            self.observation_space = gym.spaces.Box(
+                low=np.append(self.observation_space.low, np.zeros(self.adversarial_control_env.env.action_dim + self.adversarial_control_env.env.observation_dim)),
+                high=np.append(self.observation_space.high, np.ones(self.adversarial_control_env.env.action_dim + self.adversarial_control_env.env.observation_dim)))
 
-        self.attacker_power = power
+        self.action_space = gym.spaces.Box(low=self.adversarial_control_env.env.action_space.low,
+                                           high=self.adversarial_control_env.env.action_space.high)
 
     def step(self, action: np.ndarray) -> Tuple[Any, float, bool, Dict]:
         self.adversarial_control_env.set_defender(ConstantAgent(action))

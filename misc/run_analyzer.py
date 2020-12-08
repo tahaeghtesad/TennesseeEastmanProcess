@@ -1,4 +1,4 @@
-import multiprocessing
+import multiprocessing as mp
 import threading
 from time import time
 
@@ -10,7 +10,8 @@ import json
 import csv
 from tqdm import tqdm
 
-from agents.RLAgents import LimitedHistoryAgent, HistoryAgent, SimpleWrapperAgent, NoOpAgent
+from agents.RLAgents import LimitedHistoryAgent, HistoryAgent, SimpleWrapperAgent, ZeroAgent
+from envs.control.adversarial_control import AdversarialControlEnv
 
 
 class Analyzer:
@@ -21,36 +22,28 @@ class Analyzer:
         with open(f'{self.base_path}/info.json') as param_file:
             self.params = json.load(param_file)
 
-    def payoff(self, attacker, defender, repeat=20):
-        env = gym.make(f'{self.params["env_id"]}Def-v0',
-                       **self.params['env_params'],
-                       attacker=attacker
-                       )
+    def payoff(self, attacker, defender, repeat=50):
+        env = AdversarialControlEnv('BRP-v0', attacker, defender, **self.params['env_params'])
 
-        r = 0
+        ra = 0
+        rd = 0
 
         for _ in range(repeat):
-            def_obs = env.reset()
+            env.reset()
             done = False
             iter = 0
-            while not done:
-                action = defender.predict(def_obs)
-                def_obs, reward, done, info = env.step(action)
+            for step in range(50):
+                (att_obs, def_obs), (reward_a, reward_d), done, info = env.step()
 
-                r += reward * self.params['rl_params']['gamma'] ** iter
+                ra += reward_a * self.params['rl_params']['gamma'] ** iter
+                rd += reward_d * self.params['rl_params']['gamma'] ** iter
                 iter += 1
 
-        return -r / repeat, r / repeat
+        return ra / repeat, rd / repeat
 
     def load_agent(self):
-        dqn_agent = DDPG.load(f'{self.base_path}/params/defender-0.zip')
-        if self.params['training_params']['defender_history']:
-            if self.params['training_params']['defender_limited_history']:
-                return LimitedHistoryAgent(dqn_agent)
-            else:
-                return HistoryAgent(dqn_agent)
-        else:
-            return SimpleWrapperAgent(dqn_agent)
+        dqn_agent = DDPG.load(f'{self.base_path}/params/defender-0.zip', verbose=0)
+        return SimpleWrapperAgent(dqn_agent)
 
     def params_to_list(self):
         ret = []
@@ -81,30 +74,27 @@ if __name__ == '__main__':
 
         writer = csv.writer(csv_file)
 
-        info_row = Analyzer(f'../runs/back2/{1500}').param_names_to_list()
+        info_row = Analyzer(f'../runs/back2/{2000}').param_names_to_list()
         info_row += ['defender_payoff']
         info_row = ['id'] + info_row
         writer.writerow(info_row)
-
-        csv_writer_lock = threading.Lock()
-
-        pool = multiprocessing.pool.ThreadPool(8)
 
         def extract(i):
             start = time()
             analyzer = Analyzer(f'../runs/back2/{i}')
             defender = analyzer.load_agent()
-            attacker = NoOpAgent(4)
+            attacker = ZeroAgent(4)
             _, du = analyzer.payoff(attacker, defender)
             conf_row = analyzer.params_to_list()
             conf_row += [du]
             conf_row = [i] + conf_row
             # conf_row = ['kir']
-            with csv_writer_lock:
-                writer.writerow(conf_row)
-                print(f'Done with agent {i}, took {time() - start:.3f}s')
+            print(f'Done with agent {i}, took {time() - start:.3f}s')
+            return conf_row
 
         # for i in tqdm(range(1500, 1659)):
         #     extract(i)
-        pool.map(extract, [i for i in range(1500, 1659)])
+        with mp.Pool(10) as p:
+            for conf_row in p.map(extract, [i for i in range(2000, 2320)]):
+                writer.writerow(conf_row)
         # pool.close()
