@@ -1,18 +1,12 @@
-import os
 import subprocess
+import sys
 
 
-def run(params):
-    # print(f"Submitting... {['sbatch', 'run.srun.sh']}")
-    # print(' '.join(['sbatch', 'run.srun.sh'] + params))
-    # subprocess.run(['sbatch', 'run.srun.sh'] + params)
-    return 0
-
-
-if __name__ == '__main__':
-
-    index = 6000
+def generate_runs(index, parallelization):
     count = 0
+
+    runs = []
+
     for ts in ['300_000']:
         for s in ['0.01', '0.0']:
             for n in ['True', 'False']:
@@ -22,33 +16,76 @@ if __name__ == '__main__':
                             for e in ['.00', '0.1']:
                                 for a in ['tanh', 'elu']:
                                     for l in [
-                                              '25, 25, 25, 25',
-                                              '25, 25, 25, 25, 25',
-                                              '25, 25, 25',
-                                              '25, 25',
-                                              '25'
-                                              ]:
+                                        '25, 25, 25, 25',
+                                        '25, 25, 25, 25, 25',
+                                        '25, 25, 25',
+                                        '25, 25',
+                                        '25'
+                                    ]:
                                         for _ in range(4):
-                                            run(['rc',
-                                                 '--env_id', 'BRP',
-                                                 '--index', f'{index}',
-                                                 '--max_iter', '1',
-                                                 '--training_params_training_steps', ts,
-                                                 '--training_params_concurrent_runs', '2',
-                                                 '--training_params_tb_logging', 'False',
-                                                 '--training_params_action_noise_sigma', s,
-                                                 '--env_params_compromise_actuation_prob', '0',
-                                                 '--env_params_compromise_observation_prob', '0',
-                                                 '--env_params_noise', n,
-                                                 '--env_params_history_length', hl,
-                                                 '--env_params_include_compromise', 'True',
-                                                 '--env_params_test_env', te,
-                                                 '--rl_params_gamma', g,
-                                                 '--rl_params_random_exploration', e,
-                                                 '--policy_params_activation', a,
-                                                 '--policy_params_layers', l
-                                                 ])
+                                            runs += [['rc',
+                                                      '--env_id', 'BRP',
+                                                      '--index', f'{index}',
+                                                      '--max_iter', '1',
+                                                      '--training_params_training_steps', ts,
+                                                      '--training_params_concurrent_runs', str(parallelization),
+                                                      '--training_params_tb_logging', 'False',
+                                                      '--training_params_action_noise_sigma', s,
+                                                      '--env_params_compromise_actuation_prob', '0',
+                                                      '--env_params_compromise_observation_prob', '0',
+                                                      '--env_params_noise', n,
+                                                      '--env_params_history_length', hl,
+                                                      '--env_params_include_compromise', 'True',
+                                                      '--env_params_test_env', te,
+                                                      '--rl_params_gamma', g,
+                                                      '--rl_params_random_exploration', e,
+                                                      '--policy_params_activation', a,
+                                                      '--policy_params_layers', l
+                                                      ]]
                                             index += 1
                                             count += 1
 
-    print(f'Total {count} jobs were executed.')
+    print(f'Total {count} jobs were created.')
+    return runs
+
+
+default_conf = [
+    '-J TEP',
+    '-t 2:00:00',
+    '--mem 8GB',
+    '-A laszka'
+]
+
+
+def write_config(target, config, runs, parralelization):
+    with open(target, 'w') as tf:
+        tf.write('#!/bin/bash\n')
+
+        for conf in config:
+            tf.write(f'#SBATCH {conf}\n')
+
+        tf.write(f'#SBATCH -N 1 -n {parralelization}\n\n')
+        tf.write(f'#SBATCH --array 1-{len(runs)}\n\n')
+
+        tf.write('''source /home/${USER}/.bashrc
+conda activate tep-cpu
+cd /project/laszka/TennesseeEastmanProcess/
+export PATH=$PWD/gambit-project/:$PATH
+
+python run.rc.py $SLURM_ARRAY_TASK_ID
+''')
+
+
+if __name__ == '__main__':
+    parallelization = 2
+    start_index = 6000
+    runs = generate_runs(start_index, parallelization)
+    if len(sys.argv) == 1:
+        target = 'dynamic.run.srun.sh'
+        write_config(target, default_conf, runs, parallelization)
+        print(f'running {["sbatch", target]}')
+        subprocess.run(['sbatch', target])
+    if len(sys.argv) == 2:
+        run_conf = int(sys.argv[1])
+        print(f"running {['python', 'cli.py'] + runs[run_conf - 1]}")
+        subprocess.run(['python', 'cli.py'] + runs[run_conf - 1])
