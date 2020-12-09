@@ -13,14 +13,10 @@ def generate_runs(index, parallelization):
                 for te in ['True', 'False']:
                     for hl in ['1', '4', '8']:
                         for g in ['0.9', '.5']:
-                            for e in ['.00', '0.1']:
-                                for a in ['tanh', 'elu']:
+                            for e in ['.00', '0.1', '0.5']:
+                                for a in ['tanh']:
                                     for l in [
-                                        '25, 25, 25, 25',
-                                        '25, 25, 25, 25, 25',
-                                        '25, 25, 25',
-                                        '25, 25',
-                                        '25'
+                                        '25, 25, 25, 25'
                                     ]:
                                         for _ in range(4):
                                             runs += [['rc',
@@ -65,7 +61,7 @@ def write_config(target, config, runs, parralelization):
             tf.write(f'#SBATCH {conf}\n')
 
         tf.write(f'#SBATCH -N 1 -n {parralelization}\n\n')
-        tf.write(f'#SBATCH --array 1-{len(runs)}\n\n')
+        tf.write(f'#SBATCH --array=1-{len(runs)}\n\n')
 
         tf.write('''source /home/${USER}/.bashrc
 conda activate tep-cpu
@@ -80,6 +76,7 @@ if __name__ == '__main__':
     parallelization = 2
     start_index = 6000
     runs = generate_runs(start_index, parallelization)
+    assert len(runs) < 1001, 'Too many runs to schedule'
     if len(sys.argv) == 1:
         target = 'dynamic.run.srun.sh'
         write_config(target, default_conf, runs, parallelization)

@@ -116,7 +116,7 @@ class RCTrainer(Trainer):
 
         return SimpleWrapperAgent(defender_model)
 
-    def get_payoff(self, attacker: Agent, defender: Agent, repeat=20, compromise=None):
+    def get_payoff(self, attacker: Agent, defender: Agent, repeat=50, compromise=None):
         if self.env_id == 'BRP':
             env = AdversarialControlEnv('BRP-v0', attacker, defender, **self.env_params)
         else:
@@ -136,8 +136,8 @@ class RCTrainer(Trainer):
             while not done:
                 (att_obs, def_obs), (reward_a, reward_d), done, info = env.step()
 
-                ra += reward_a * self.rl_params['gamma'] ** iter
-                rd += reward_d * self.rl_params['gamma'] ** iter
+                ra += reward_a * .9 ** iter ## Evaluation Gamma should Always be the same
+                rd += reward_d * .9 ** iter
                 iter += 1
                 total_steps += 1
 
