@@ -53,15 +53,15 @@ default_conf = [
 ]
 
 
-def write_config(target, config, runs, parralelization):
+def write_config(target, config, runs, paralelization, concurrent_runs):
     with open(target, 'w') as tf:
         tf.write('#!/bin/bash\n')
 
         for conf in config:
             tf.write(f'#SBATCH {conf}\n')
 
-        tf.write(f'#SBATCH -N 1 -n {parralelization}\n\n')
-        tf.write(f'#SBATCH --array=1-{len(runs)}\n\n')
+        tf.write(f'#SBATCH -N 1 -n {paralelization}\n\n')
+        tf.write(f'#SBATCH --array=1-{len(runs)}%{concurrent_runs}\n\n')
 
         tf.write('''source /home/${USER}/.bashrc
 conda activate tep-cpu
@@ -73,13 +73,14 @@ python run.rc.py $SLURM_ARRAY_TASK_ID
 
 
 if __name__ == '__main__':
-    parallelization = 2
+    parallelization = 1
     start_index = 6000
+    concurrent_runs = 50
     runs = generate_runs(start_index, parallelization)
     assert len(runs) < 1001, 'Too many runs to schedule'
     if len(sys.argv) == 1:
         target = 'dynamic.run.srun.sh'
-        write_config(target, default_conf, runs, parallelization)
+        write_config(target, default_conf, runs, parallelization, concurrent_runs)
         print(f'running {["sbatch", target]}')
         subprocess.run(['sbatch', target])
     if len(sys.argv) == 2:
