@@ -1,7 +1,10 @@
+from typing import Tuple
+
 import gym
 import wandb
 from stable_baselines import DDPG
 from stable_baselines.common.noise import NormalActionNoise
+from wandb import Table
 
 import envs
 from stable_baselines.ddpg import LnMlpPolicy
@@ -116,7 +119,7 @@ class RCTrainer(Trainer):
 
         return SimpleWrapperAgent(defender_model)
 
-    def get_payoff(self, attacker: Agent, defender: Agent, repeat=50, compromise=None):
+    def get_payoff(self, attacker: Agent, defender: Agent, repeat=50, compromise=None, log=True):
         if self.env_id == 'BRP':
             env = AdversarialControlEnv('BRP-v0', attacker, defender, **self.env_params)
         else:
@@ -124,7 +127,7 @@ class RCTrainer(Trainer):
 
         ra = 0
         rd = 0
-        total_steps = 1
+        total_steps = 0
 
         columns = ['reward', 'x_0', 'x_1', 'a_0', 'a_1', 'd_0', 'd_1', 'u_0', 'u_1', 'dx_0', 'dx_1', 'o_0', 'o_1']
         report_table = wandb.Table(columns=['step'] + columns)
@@ -139,7 +142,6 @@ class RCTrainer(Trainer):
                 ra += reward_a * .9 ** iter ## Evaluation Gamma should Always be the same
                 rd += reward_d * .9 ** iter
                 iter += 1
-                total_steps += 1
 
                 report_table.add_data(
                     total_steps,
@@ -158,21 +160,24 @@ class RCTrainer(Trainer):
                     info['o'][1]
                 )
 
-                wandb.log({
-                    'test_env/reward': reward_d,
-                    # 'test/a0': info['a'][0],
-                    # 'test/a1': info['a'][1],
-                    # 'test/d0': info['d'][0],
-                    # 'test/d1': info['d'][1],
-                    'test/u0': info['u'][0],
-                    'test/u1': info['u'][1],
-                    'test/dx0': info['dx'][0],
-                    'test/dx1': info['dx'][1],
-                    'test/x0': info['x'][0],
-                    'test/x1': info['x'][1],
-                    # 'test/o0': info['o'][0],
-                    # 'test/o1': info['o'][1]
-                })
+                if log:
+                    wandb.log({
+                        'test/reward': reward_d,
+                        'test/a0': info['a'][0],
+                        'test/a1': info['a'][1],
+                        'test/d0': info['d'][0],
+                        'test/d1': info['d'][1],
+                        'test/u0': info['u'][0],
+                        'test/u1': info['u'][1],
+                        'test/dx0': info['dx'][0],
+                        'test/dx1': info['dx'][1],
+                        'test/x0': info['x'][0],
+                        'test/x1': info['x'][1],
+                        'test/o0': info['o'][0],
+                        'test/o1': info['o'][1]
+                    })
+
+                total_steps += 1
 
         # log = {}
         # for column in columns:

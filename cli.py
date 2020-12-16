@@ -118,39 +118,60 @@ def do_marl(prefix, index, params, max_iter, trainer_class, nash_solver):
 
     # wandb.run.summary.update({'base_defender_payoff': du})
 
-    # attacker_strategy, defender_strategy = nash_solver(trainer.attacker_payoff_table,
-    #                                                    trainer.defender_payoff_table)
-    # compromise = np.concatenate(
-    #     (np.random.rand(2) < params['env_params']['compromise_observation_prob'],
-    #      np.random.rand(2) < params['env_params']['compromise_actuation_prob'])
-    #     , axis=0).astype(np.float)
-    #
-    # _, _, no_attack = trainer.get_payoff(
-    #     attacker_ms.policies[0],
-    #     defender_ms.policies[0],
-    #     repeat=1,
-    #     compromise=compromise
-    # )
-    #
-    # _, _, no_defense = trainer.get_payoff(
-    #     attacker_ms.policies[np.argmax(attacker_strategy)],
-    #     defender_ms.policies[0],
-    #     repeat=1,
-    #     compromise=compromise
-    # )
-    #
-    # _, _, defense = trainer.get_payoff(
-    #     attacker_ms.policies[np.argmax(attacker_strategy)],
-    #     defender_ms.policies[np.argmax(defender_strategy)],
-    #     repeat=1,
-    #     compromise=compromise
-    # )
+    log_results(attacker_ms, defender_ms, params, trainer, nash_solver)
 
     # wandb.run.summary['defense'] = defense
     # wandb.run.summary['no_attack'] = no_attack
     # wandb.run.summary['no_defense'] = no_defense
     # wandb.run.summary.update({})
     run.finish(0)
+
+
+def log_results(attacker_ms, defender_ms, params, trainer, nash_solver):
+    attacker_strategy, defender_strategy = nash_solver(trainer.attacker_payoff_table,
+                                                       trainer.defender_payoff_table)
+    compromise = np.concatenate(
+        (np.random.rand(2) < params['env_params']['compromise_observation_prob'],
+         np.random.rand(2) < params['env_params']['compromise_actuation_prob'])
+        , axis=0).astype(np.float)
+
+    _, du_na, no_attack = trainer.get_payoff(
+        attacker_ms.policies[0],
+        defender_ms.policies[0],
+        repeat=10,
+        compromise=compromise,
+        log=False
+    )
+
+    _, du_nd, no_defense = trainer.get_payoff(
+        attacker_ms.policies[np.argmax(attacker_strategy)],
+        defender_ms.policies[0],
+        repeat=10,
+        compromise=compromise,
+        log=False
+    )
+
+    _, du_d, defense = trainer.get_payoff(
+        attacker_ms.policies[np.argmax(attacker_strategy)],
+        defender_ms.policies[np.argmax(defender_strategy)],
+        repeat=10,
+        compromise=compromise,
+        log=False
+    )
+    for step in range(len(no_attack.data)):
+        columns = no_attack.columns[1:]
+        log = {}
+        for i, col in enumerate(columns):
+            log[f'report/{col}/no_attack'] = no_attack.data[step][i + 1]
+            log[f'report/{col}/defense'] = defense.data[step][i + 1]
+            log[f'report/{col}/no_defense'] = no_defense.data[step][i + 1]
+        wandb.log(log)
+
+    wandb.run.summary.update({
+        'final_payoff/defense': du_d,
+        'final_payoff/no_defense': du_nd,
+        'final_payoff/no_attack': du_na,
+    })
 
 
 def to_bool(input):
@@ -309,6 +330,7 @@ def do_rc(env_id, prefix, index,
     }
 
     do_marl(prefix, index, params, max_iter, RCTrainer, find_zero_sum_mixed_ne_gambit)
+
 
 @click.group(invoke_without_command=True)
 @click.pass_context
