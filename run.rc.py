@@ -9,7 +9,7 @@ def generate_runs(index, parallelization):
 
     for ts in ['300_000']:
         for s in ['0.01']:
-            for p in [0.3, 0.6]:
+            for p in ['0.3', '0.6']:
                 for n in ['True', 'False']:
                     for c in ['True', 'False']:
                         for ca in ['0.0', '0.5']:
