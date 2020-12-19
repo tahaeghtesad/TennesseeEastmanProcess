@@ -10,10 +10,11 @@ from envs.control.control_env import ControlEnv
 
 class BioReactor(ControlEnv):
 
-    def __init__(self, test_env=False, noise=True) -> None:
-        super().__init__(test_env, noise)
+    def __init__(self, test_env=False, noise_sigma=0.05, t_epoch=50) -> None:
+        super().__init__(test_env, noise_sigma)
         self.logger = logging.getLogger(__class__.__name__)
         self.x = np.array([0., 0.])
+        self.t_epoch = t_epoch
 
         self.action_space = gym.spaces.Box(low=np.array([0.0, 0.0]), high=np.array([5.0, 5.0]))
         self.observation_space = gym.spaces.Box(low=np.array([0.0, 0.0]), high=np.array([10., 10.]))
@@ -41,7 +42,7 @@ class BioReactor(ControlEnv):
     def step(self, action: np.ndarray) -> Tuple[Any, float, bool, Dict]:  # Obs, Reward, Done, Info
         self.step_count += 1
 
-        u = action * (1. + np.random.normal(loc=np.zeros(self.action_dim,), scale=np.array([0.00, 0.07]))) if self.noise else action
+        u = action * (1. + np.random.normal(loc=np.zeros(self.action_dim,), scale=np.repeat(self.noise_sigma, self.action_dim)))
 
         dx = np.array([
             (mu(self.x[1]) - u[0]) * self.x[0],
@@ -51,7 +52,7 @@ class BioReactor(ControlEnv):
         self.x = self.x * 1. + dx
         self.x = self.clip(self.x)
 
-        win = False
+        win = self.t_epoch == self.step_count
         reward = -np.linalg.norm(self.x - self.goal)
         # if np.linalg.norm(self.x - self.goal) < 0.01:
         #     reward += 5.
@@ -60,7 +61,7 @@ class BioReactor(ControlEnv):
         if win:
             self.win_count += 1
 
-        return self.clip(self.x * (1. + np.random.normal(loc=np.zeros(self.observation_dim,), scale=np.array([0.00, 0.07]))) if self.noise else self.x), reward, win, {
+        return self.x * (1. + np.random.normal(loc=np.zeros(self.action_dim,), scale=np.repeat(self.noise_sigma, self.action_dim))), reward, win, {
             'u': u,
             'x': self.x,
             'dx': dx
@@ -89,13 +90,13 @@ def mu(x2: float, mu_max: float = 0.53, km: float = 0.12, k1: float = 0.4545) ->
 
 class BioReactorAttacker(gym.Env):  # This is a noise generator attacker.
 
-    def __init__(self, defender: Agent, compromise_actuation_prob: float, compromise_observation_prob: float, power: float = 0.3, noise=True,
-                 history_length=12, include_compromise=True, test_env=False) -> None:
+    def __init__(self, defender: Agent, compromise_actuation_prob: float, compromise_observation_prob: float, power: float = 0.3, noise_sigma=0.07,
+                 history_length=12, include_compromise=True, test_env=False, t_epoch=50) -> None:
         self.include_compromise = include_compromise
         self.logger = logging.getLogger(__class__.__name__)
 
         self.adversarial_control_env = AdversarialControlEnv('BRP-v0', None, defender, compromise_actuation_prob,
-                                                             compromise_observation_prob, history_length, include_compromise, noise, power, test_env)
+                                                             compromise_observation_prob, history_length, include_compromise, noise_sigma, t_epoch, power, test_env)
 
         self.observation_space = gym.spaces.Box(low=np.array([-5., -5.] * history_length + [0.] * (self.adversarial_control_env.env.action_dim + self.adversarial_control_env.env.observation_dim)) if self.include_compromise else np.array([-5., -5.] * history_length),
                                                 high=np.array([5., 5.]  * history_length + [0.] * (self.adversarial_control_env.env.action_dim + self.adversarial_control_env.env.observation_dim)) if self.include_compromise else np.array([-5., -5.] * history_length))
@@ -121,13 +122,13 @@ class BioReactorAttacker(gym.Env):  # This is a noise generator attacker.
 
 class BioReactorDefender(gym.Env):
 
-    def __init__(self, attacker: Agent, compromise_actuation_prob: float, compromise_observation_prob: float, power: float = 0.3, noise=True, test_env=False,
-                 history_length=12, include_compromise=True) -> None:
+    def __init__(self, attacker: Agent, compromise_actuation_prob: float, compromise_observation_prob: float, power: float = 0.3, noise_sigma=0.07, test_env=False,
+                 history_length=12, include_compromise=True, t_epoch=50) -> None:
         self.include_compromise = include_compromise
         self.logger = logging.getLogger(__class__.__name__)
 
         self.adversarial_control_env = AdversarialControlEnv('BRP-v0', attacker, None, compromise_actuation_prob,
-                                                             compromise_observation_prob, history_length, include_compromise, noise, power, test_env)
+                                                             compromise_observation_prob, history_length, include_compromise, noise_sigma, t_epoch, power, test_env)
 
         self.observation_space = gym.spaces.Box(low=np.tile(self.adversarial_control_env.env.observation_space.low, history_length),
                                                 high=np.tile(self.adversarial_control_env.env.observation_space.high, history_length))

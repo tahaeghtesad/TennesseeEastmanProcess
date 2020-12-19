@@ -55,3 +55,11 @@ def find_general_sum_mixed_ne(attacker_payoff, defender_payoff):
 
     return np.array([p for p in profile[-1]])[:attacker_payoff.shape[0]],\
            np.array([p for p in profile[-1]])[attacker_payoff.shape[0]:]
+
+
+def get_payoff_from_table(func, attacker_payoff, defender_payoff):
+    msne_a, msne_d = func(attacker_payoff, defender_payoff)
+    probabilities = np.outer(msne_a, msne_d)
+    reward_a = attacker_payoff * probabilities
+    reward_d = defender_payoff * probabilities
+    return sum(sum(reward_a)), sum(sum(reward_d))

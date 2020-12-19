@@ -8,7 +8,7 @@ from mpi4py import MPI
 from agents.RLAgents import ZeroAgent
 from trainer import MTDTrainer, RCTrainer
 import tensorflow as tf
-from util.nash_helpers import find_general_sum_mixed_ne, find_zero_sum_mixed_ne_gambit
+from util.nash_helpers import find_general_sum_mixed_ne, find_zero_sum_mixed_ne_gambit, get_payoff_from_table
 import json
 import os
 import copy
@@ -31,7 +31,7 @@ def init_logger(prefix, index):
     return rootLogger
 
 
-def do_marl(prefix, index, params, max_iter, trainer_class, nash_solver):
+def do_marl(prefix, index, group, params, max_iter, trainer_class, nash_solver):
     # index = f'{index}_{str(np.random.randint(0, 1000)).zfill(4)}'
 
     if not os.path.exists(f'{prefix}'):
@@ -55,7 +55,7 @@ def do_marl(prefix, index, params, max_iter, trainer_class, nash_solver):
         params_back['policy_params']['act_fun'] = params_back['policy_params']['act_fun'].__name__
         json.dump(params_back, fd)
 
-    run = wandb.init(project='tep', config=params_back, dir=f'{prefix}/{index}')
+    run = wandb.init(project='tep', config=params_back, dir=f'{prefix}/{index}', group=group)
     run.save(f'{prefix}/{index}/info.json')
     run.save(f'{prefix}/{index}/log.log')
     run.save(f'{prefix}/{index}/params/*')
@@ -83,6 +83,8 @@ def do_marl(prefix, index, params, max_iter, trainer_class, nash_solver):
     logger.info(f'Attacker Heuristics: {attacker_iteration}')
     logger.info(f'Defender Heuristics: {defender_iteration}')
 
+    aus, dus = [trainer.attacker_payoff_table[0, 0]], [trainer.defender_payoff_table[0, 0]]
+
     while attacker_iteration < max_iter or defender_iteration < max_iter:
         # Train Attacker
         logger.info(f'Training Attacker {attacker_iteration}')
@@ -96,9 +98,10 @@ def do_marl(prefix, index, params, max_iter, trainer_class, nash_solver):
         trainer.update_attacker_payoff_table(np.array([au for (au, du, _) in payoffs]),
                                              np.array([du for (au, du, _) in payoffs]))
         attacker_iteration += 1
-        au, du, _ = trainer.get_payoff(attacker_policy, defender_ms)
+        au, du, _ = get_payoff_from_table(nash_solver, trainer.attacker_payoff_table, trainer.defender_payoff_table)
         wandb.log({'payoffs/attacker': au, 'payoffs/defender': du})
-        logging.info(f'New Attacker vs MSNE Defender Payoff: {au, du}')
+        logging.info(f'MSNE Attacker vs MSNE Defender Payoff: {au, du}')
+        logging.info(f'Improvement: {(du - aus[-1])/aus[-1]:}')
 
         # Train Defender
         logger.info(f'Training Defender {defender_iteration}')
@@ -112,9 +115,9 @@ def do_marl(prefix, index, params, max_iter, trainer_class, nash_solver):
         trainer.update_defender_payoff_table(np.array([au for (au, du, _) in payoffs]),
                                              np.array([du for (au, du, _) in payoffs]))
         defender_iteration += 1
-        au, du, _ = trainer.get_payoff(attacker_ms, defender_policy)
+        au, du, _ = get_payoff_from_table(nash_solver, trainer.attacker_payoff_table, trainer.defender_payoff_table)
         wandb.log({'payoffs/attacker': au, 'payoffs/defender': du})
-        logging.info(f'MSNE Attacker vs New Defender Payoff: {au, du}')
+        logging.info(f'MSNE Attacker vs MSNE Defender Payoff: {au, du}')
 
     # wandb.run.summary.update({'base_defender_payoff': du})
 
@@ -266,6 +269,7 @@ def do_mtd(prefix, index,
 @click.command(name='rc')
 @click.option('--env_id', help='Name of the training environment', required=True)
 @click.option('--prefix', default='runs', help='Prefix folder of run results', show_default=True)
+@click.option('--group', default=None, help='WandB group name', show_default=True)
 @click.option('--index', help='Index for this run', required=True)
 @click.option('--max_iter', default=15, help='Maximum iteration for DO.', show_default=True)
 @click.option('--training_params_training_steps', default=200 * 1000,
@@ -277,15 +281,19 @@ def do_mtd(prefix, index,
 @click.option('--env_params_compromise_actuation_prob', default=0.5, help='Actuation compromise probability')
 @click.option('--env_params_compromise_observation_prob', default=0.5, help='Observation compromise probability')
 @click.option('--env_params_power', default=0.3, help='Power of attacker')
-@click.option('--env_params_noise', default=True, help='Whether to include noise to the env')
+@click.option('--env_params_noise_sigma', default=0.07, help='Environment noise sigma')
 @click.option('--env_params_history_length', default=12, help='Length of agent history')
 @click.option('--env_params_include_compromise', default=True, help='Whether to include compromise to observation')
 @click.option('--env_params_test_env', default=False, help='Whether to use set point as starting point of env')
+@click.option('--env_params_t_epoch', default=50, help='The number of time steps before an environment is reset')
 @click.option('--rl_params_random_exploration', default=0.1, help='Exploration Fraction', show_default=True)
 @click.option('--rl_params_gamma', default=0.90, help='Gamma', show_default=True)
 @click.option('--policy_params_activation', default='tanh', help='Activation Function', show_default=True)
 @click.option('--policy_params_layers', default='32, 32', help='MLP Network Layers', show_default=True)
-def do_rc(env_id, prefix, index,
+def do_rc(env_id,
+          prefix,
+          index,
+          group,
           max_iter,
           training_params_training_steps,
           training_params_concurrent_runs,
@@ -298,10 +306,11 @@ def do_rc(env_id, prefix, index,
           env_params_compromise_actuation_prob,
           env_params_compromise_observation_prob,
           env_params_power,
-          env_params_noise,
+          env_params_noise_sigma,
           env_params_history_length,
           env_params_include_compromise,
-          env_params_test_env):
+          env_params_test_env,
+          env_params_t_epoch):
     params = {
         'env_id': env_id,
         'training_params': {
@@ -315,9 +324,10 @@ def do_rc(env_id, prefix, index,
             'compromise_observation_prob': env_params_compromise_observation_prob,
             'history_length': env_params_history_length,
             'power': env_params_power,
-            'noise': to_bool(env_params_noise),
+            'noise_sigma': env_params_noise_sigma,
             'include_compromise': to_bool(env_params_include_compromise),
-            'test_env': env_params_test_env
+            'test_env': env_params_test_env,
+            't_epoch': env_params_t_epoch
         },
         'rl_params': {
             'random_exploration': rl_params_random_exploration,
@@ -329,7 +339,9 @@ def do_rc(env_id, prefix, index,
         }
     }
 
-    do_marl(prefix, index, params, max_iter, RCTrainer, find_zero_sum_mixed_ne_gambit)
+    group = None if group is None or group=='' else group
+
+    do_marl(prefix, index, group, params, max_iter, RCTrainer, find_zero_sum_mixed_ne_gambit)
 
 
 @click.group(invoke_without_command=True)

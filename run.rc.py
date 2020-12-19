@@ -1,49 +1,139 @@
 import subprocess
 import sys
 
+def create_run(
+        index,
+        group,
+        env='BRP',
+        max_iter=1,
+        training_steps=300_000,
+        parallelization=1,
+        tb_logging=False,
+        action_noise_sigma=0.1,
+        compromise_actuation_prob=0.0,
+        compromise_observation_prob=0.0,
+        power=0.3,
+        noise_sigma=0.05,
+        history_length=1,
+        include_compromise=False,
+        test_env=False,
+        t_epoch=50,
+        gamma=0.09,
+        epsilon=0.1,
+        act_fun='tanh',
+        layers='25, 25, 25, 25'
+):
+    return ['rc',
+            '--env_id', env,
+            '--index', f'{index}',
+            '--max_iter', f'{max_iter}',
+            '--group', group,
+            '--training_params_training_steps', training_steps,
+            '--training_params_concurrent_runs', f'{parallelization}',
+            '--training_params_tb_logging', f'{tb_logging}',
+            '--training_params_action_noise_sigma', f'{action_noise_sigma}',
+            '--env_params_compromise_actuation_prob', f'{compromise_actuation_prob}',
+            '--env_params_compromise_observation_prob', f'{compromise_observation_prob}',
+            '--env_params_power', f'{power}',
+            '--env_params_noise_sigma', f'{noise_sigma}',
+            '--env_params_history_length', f'{history_length}',
+            '--env_params_include_compromise', f'{include_compromise}',
+            '--env_params_test_env', f'{test_env}',
+            '--env_params_t_epoch', f'{t_epoch}',
+            '--rl_params_gamma', f'{gamma}',
+            '--rl_params_random_exploration', f'{epsilon}',
+            '--policy_params_activation', f'{act_fun}',
+            '--policy_params_layers', f'{layers}'
+            ]
 
-def generate_runs(index, parallelization):
+
+def generate_runs(repeat, index, parallelization):
     count = 0
 
     runs = []
 
-    for ts in ['300_000']:
-        for s in ['0.01']:
-            for p in ['0.3', '0.6']:
-                for n in ['True', 'False']:
-                    for c in ['True', 'False']:
-                        for ca in ['0.0', '0.5']:
-                            for co in ['0.0', '0.5']:
-                                for hl in ['1', '8']:
-                                    for g in ['0.9']:
-                                        for e in ['.00', '0.1', '0.5']:
-                                            for a in ['tanh']:
-                                                for l in [
-                                                    '25, 25, 25, 25'
-                                                ]:
-                                                    for _ in range(4):
-                                                        runs += [['rc',
-                                                                  '--env_id', 'BRP',
-                                                                  '--index', f'{index}',
-                                                                  '--max_iter', '14',
-                                                                  '--training_params_training_steps', ts,
-                                                                  '--training_params_concurrent_runs', str(parallelization),
-                                                                  '--training_params_tb_logging', 'False',
-                                                                  '--training_params_action_noise_sigma', s,
-                                                                  '--env_params_compromise_actuation_prob', ca,
-                                                                  '--env_params_compromise_observation_prob', co,
-                                                                  '--env_params_power', p,
-                                                                  '--env_params_noise', n,
-                                                                  '--env_params_history_length', hl,
-                                                                  '--env_params_include_compromise', c,
-                                                                  '--env_params_test_env', 'False',
-                                                                  '--rl_params_gamma', g,
-                                                                  '--rl_params_random_exploration', e,
-                                                                  '--policy_params_activation', a,
-                                                                  '--policy_params_layers', l
-                                                                  ]]
-                                                        index += 1
-                                                        count += 1
+    ## Baseline
+    for r in range(repeat):
+        runs.append(create_run(
+            index, 'baseline', parallelization=parallelization
+        ))
+        index += 1
+        count += 1
+
+    ## Changing The Agent Conf
+
+    # Epsilon
+    for e in [0.0, 0.01, 0.1, 0.2]:
+        for r in range(repeat):
+            runs.append(create_run(
+                index, 'epsilon', epsilon=e, parallelization=parallelization
+            ))
+            index += 1
+            count += 1
+
+    # Gamma
+    for g in [0.9, 0.5, 0.1]:
+        for r in range(repeat):
+            runs.append(create_run(
+                index, 'gamma', gamma=g, parallelization=parallelization
+            ))
+            index += 1
+            count += 1
+
+    # act_fun
+    for a in ['tanh', 'sigmoid', 'relu', 'elu']:
+        for r in range(repeat):
+            runs.append(create_run(
+                index, 'act_fun', act_fun=a, parallelization=parallelization
+            ))
+            index += 1
+            count += 1
+
+    # layers
+    for l in ['25, 25, 25, 25', '25, 25, 25', '25, 25', '128, 64', '128, 64, 32']:
+        for r in range(repeat):
+            runs.append(create_run(
+                index, 'layers', layers=l, parallelization=parallelization
+            ))
+            index += 1
+            count += 1
+
+    # action noise
+    for an in [0.01, 0.05, 0.1, 0.5]:
+        for r in range(repeat):
+            runs.append(create_run(
+                index, 'action_noise', action_noise_sigma=an, parallelization=parallelization
+            ))
+            index += 1
+            count += 1
+
+    # action noise
+    for an in [0.01, 0.05, 0.1, 0.5]:
+        for r in range(repeat):
+            runs.append(create_run(
+                index, 'action_noise', action_noise_sigma=an, parallelization=parallelization
+            ))
+            index += 1
+            count += 1
+    ## Changing Env configuration
+
+    # t_epoch
+    for te in [5, 10, 50, 100, 200]:
+        for r in range(repeat):
+            runs.append(create_run(
+                index, 't_epoch', t_epoch=te, parallelization=parallelization
+            ))
+            index += 1
+            count += 1
+
+    # noise sigma
+    for ns in [0.0, 0.05, 0.1, 0.5]:
+        for r in range(repeat):
+            runs.append(create_run(
+                index, 'env_noise', noise_sigma=ns, parallelization=parallelization
+            ))
+            index += 1
+            count += 1
 
     print(f'Total {count} jobs were created.')
     return runs
@@ -51,8 +141,8 @@ def generate_runs(index, parallelization):
 
 default_conf = [
     '-J TEP',
-    '-t 48:00:00',
-    '--mem 1GB',
+    '-t 6:00:00',
+    '--mem 8GB',
     '-A laszka'
 ]
 
@@ -77,10 +167,11 @@ python run.rc.py $SLURM_ARRAY_TASK_ID
 
 
 if __name__ == '__main__':
-    parallelization = 1
-    start_index = 7000
+    parallelization = 2
+    start_index = 8000
     concurrent_runs = 100
-    runs = generate_runs(start_index, parallelization)
+    repeat = 10
+    runs = generate_runs(repeat, start_index, parallelization)
     assert len(runs) < 1001, 'Too many runs to schedule'
     if len(sys.argv) == 1:
         target = 'dynamic.run.srun.sh'

@@ -19,7 +19,8 @@ class AdversarialControlEnv:
                  compromise_observation_prob: float,
                  history_length=12,
                  include_compromise=True,
-                 noise=True,
+                 noise_sigma=0.07,
+                 t_epoch=50,
                  power=.3,
                  test_env=False) -> None:
 
@@ -38,7 +39,7 @@ class AdversarialControlEnv:
         self.defender_history = None
 
         if isinstance(env, str):
-            self.env = gym.make(f'{env}', noise=noise, test_env=test_env)
+            self.env = gym.make(f'{env}', noise_sigma=noise_sigma, test_env=test_env, t_epoch=t_epoch)
         elif isinstance(env, ControlEnv):
             self.env = env
         else:
