@@ -28,7 +28,7 @@ def create_run(
             '--index', f'{index}',
             '--max_iter', f'{max_iter}',
             '--group', group,
-            '--training_params_training_steps', training_steps,
+            '--training_params_training_steps', f'{training_steps}',
             '--training_params_concurrent_runs', f'{parallelization}',
             '--training_params_tb_logging', f'{tb_logging}',
             '--training_params_action_noise_sigma', f'{action_noise_sigma}',
