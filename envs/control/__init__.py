@@ -11,41 +11,35 @@ register(
 register(
     id='BRP-v0',
     entry_point='envs.control.envs:BioReactor',
-    max_episode_steps=50,
     reward_threshold=-0.01,
 )
 
 register(
     id='BRPAtt-v0',
     entry_point='envs.control.envs:BioReactorAttacker',
-    max_episode_steps=50,
     reward_threshold=10,
 )
 
 register(
     id='BRPDef-v0',
     entry_point='envs.control.envs:BioReactorDefender',
-    max_episode_steps=50,
     reward_threshold=-0.01
 )
 
 register(
     id='TT-v0',
     entry_point='envs.control.envs:ThreeTank',
-    max_episode_steps=50,
     reward_threshold=-0.01
 )
 
 register(
     id='TTAtt-v0',
     entry_point='envs.control.envs:ThreeTankAttacker',
-    max_episode_steps=50,
     reward_threshold=10
 )
 
 register(
     id='TTDef-v0',
     entry_point='envs.control.envs:ThreeTankDefender',
-    max_episode_steps=50,
     reward_threshold=-0.01
 )

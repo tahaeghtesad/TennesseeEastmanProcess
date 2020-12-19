@@ -17,7 +17,7 @@ def create_run(
         history_length=1,
         include_compromise=False,
         test_env=False,
-        t_epoch=50,
+        t_epoch=100,
         gamma=0.09,
         epsilon=0.1,
         act_fun='tanh',

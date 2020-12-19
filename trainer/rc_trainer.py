@@ -30,7 +30,7 @@ class RCTrainer(Trainer):
     def callback(locals_, globals_):
         self_ = locals_['self']
 
-        variables = ['u', 'x', 'dx', 'a', 'o']
+        variables = ['u', 'x', 'dx', 'a', 'o', 'd']
 
         if 'info' in locals_:
             for var in variables:
@@ -41,8 +41,9 @@ class RCTrainer(Trainer):
                                 value=[tf.Summary.Value(tag=f'env/{var}{i}', simple_value=locals_['info'][var][i])])
                             locals_['writer'].add_summary(summary, self_.num_timesteps)
                         wandb.log({f'env/{var}{i}': locals_['info'][var][i]}, step=self_.num_timesteps)
-        if 'reward_' in locals_:
-            wandb.log({f'rewards/step': locals_['reward_']}, step=self_.num_timesteps)
+        if 'reward' in locals_:
+            wandb.log({f'rewards/step': locals_['reward']}, step=self_.num_timesteps)
+
         # if 'episode_reward' in locals_:
         #     wandb.log({f'rewards/episode': locals_['episode_reward']}, step=self_.num_timesteps)
         return True

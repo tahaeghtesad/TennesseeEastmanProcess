@@ -326,7 +326,7 @@ def do_rc(env_id,
             'power': env_params_power,
             'noise_sigma': env_params_noise_sigma,
             'include_compromise': to_bool(env_params_include_compromise),
-            'test_env': env_params_test_env,
+            'test_env': to_bool(env_params_test_env),
             't_epoch': env_params_t_epoch
         },
         'rl_params': {
@@ -339,7 +339,7 @@ def do_rc(env_id,
         }
     }
 
-    group = None if group is None or group=='' else group
+    group = None if group is None or group == '' else group
 
     do_marl(prefix, index, group, params, max_iter, RCTrainer, find_zero_sum_mixed_ne_gambit)
 
