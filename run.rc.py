@@ -1,6 +1,7 @@
 import subprocess
 import sys
 
+
 def create_run(
         index,
         group,
@@ -19,7 +20,7 @@ def create_run(
         test_env=False,
         t_epoch=50,
         gamma=0.90,
-        epsilon=0.1,
+        epsilon=0.01,
         act_fun='tanh',
         layers='25, 25, 25, 25'
 ):
@@ -115,6 +116,7 @@ def generate_runs(repeat, index, parallelization):
             ))
             index += 1
             count += 1
+
     ## Changing Env configuration
 
     # t_epoch
@@ -131,6 +133,15 @@ def generate_runs(repeat, index, parallelization):
         for r in range(repeat):
             runs.append(create_run(
                 index, 'env_noise', noise_sigma=ns, parallelization=parallelization
+            ))
+            index += 1
+            count += 1
+
+    # history_length
+    for hl in [1, 2, 4, 8, 16]:
+        for r in range(repeat):
+            runs.append(create_run(
+                index, 'env_noise', history_length=hl, parallelization=parallelization
             ))
             index += 1
             count += 1
