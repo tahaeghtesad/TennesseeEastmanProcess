@@ -8,7 +8,7 @@ def create_run(
         parallelization,
         env='BRP',
         max_iter=1,
-        training_steps=300_000,
+        training_steps=500_000,
         tb_logging=False,
         action_noise_sigma=0.05,
         compromise_actuation_prob=0.0,
