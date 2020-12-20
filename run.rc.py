@@ -163,6 +163,14 @@ def generate_runs(repeat, index, parallelization):
             index += 1
             count += 1
 
+    # start from set
+    for r in range(repeat):
+        runs.append(create_run(
+            index, 'start_set', test_env=True, parallelization=parallelization
+        ))
+        index += 1
+        count += 1
+
     print(f'Total {count} jobs were created.')
     return runs
 
