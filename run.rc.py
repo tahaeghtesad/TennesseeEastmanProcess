@@ -22,7 +22,11 @@ def create_run(
         gamma=0.90,
         epsilon=0.01,
         act_fun='tanh',
-        layers='25, 25, 25, 25'
+        layers='25, 25, 25, 25',
+        nb_train=30,
+        buffer_size=5000,
+        batch_size=128,
+        nb_rollout=100,
 ):
     return ['rc',
             '--env_id', env,
@@ -43,6 +47,10 @@ def create_run(
             '--env_params_t_epoch', f'{t_epoch}',
             '--rl_params_gamma', f'{gamma}',
             '--rl_params_random_exploration', f'{epsilon}',
+            '--rl_params_nb_train', f'{nb_train}',
+            '--rl_params_nb_rollout', f'{nb_rollout}',
+            '--rl_params_batch_size', f'{batch_size}',
+            '--rl_params_buffer_size', f'{buffer_size}',
             '--policy_params_activation', f'{act_fun}',
             '--policy_params_layers', f'{layers}'
             ]
@@ -104,6 +112,24 @@ def generate_runs(repeat, index, parallelization):
         for r in range(repeat):
             runs.append(create_run(
                 index, 'action_noise', action_noise_sigma=an, parallelization=parallelization
+            ))
+            index += 1
+            count += 1
+
+    # buffer size
+    for b in [500, 1000, 5000, 10000, 50000]:
+        for r in range(repeat):
+            runs.append(create_run(
+                index, 'buffer_size', buffer_size=b, parallelization=parallelization
+            ))
+            index += 1
+            count += 1
+
+    # batch size
+    for s in [16, 32, 64, 128, 256, 512]:
+        for r in range(repeat):
+            runs.append(create_run(
+                index, 'batch_size', batch_size=s, parallelization=parallelization
             ))
             index += 1
             count += 1
@@ -171,7 +197,7 @@ python run.rc.py $SLURM_ARRAY_TASK_ID
 if __name__ == '__main__':
     parallelization = 2
     start_index = 8000
-    concurrent_runs = 100
+    concurrent_runs = 350
     repeat = 10
     runs = generate_runs(repeat, start_index, parallelization)
     assert len(runs) < 1001, 'Too many runs to schedule'

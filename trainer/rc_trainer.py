@@ -68,10 +68,6 @@ class RCTrainer(Trainer):
         attacker_model = DDPG(
             policy=self.get_policy_class(self.policy_params),
             env=env,
-            nb_train_steps=30,
-            nb_rollout_steps=100,
-            batch_size=128,
-            buffer_size=5_000,
             action_noise=NormalActionNoise(0, self.training_params['action_noise_sigma']),
             **self.rl_params,
             verbose=2,

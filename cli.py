@@ -89,7 +89,7 @@ def do_marl(prefix, index, group, params, max_iter, trainer_class, nash_solver):
         # Train Attacker
         logger.info(f'Training Attacker {attacker_iteration}')
         attacker_strategy, defender_strategy = nash_solver(trainer.attacker_payoff_table,
-                                           trainer.defender_payoff_table)
+                                                           trainer.defender_payoff_table)
         logging.info(f'Defender MSNE: {defender_strategy}')
         defender_ms.update_probabilities(defender_strategy)
         attacker_policy = trainer.train_attacker(defender_ms, attacker_iteration)
@@ -106,7 +106,7 @@ def do_marl(prefix, index, group, params, max_iter, trainer_class, nash_solver):
         # Train Defender
         logger.info(f'Training Defender {defender_iteration}')
         attacker_strategy, defender_strategy = nash_solver(trainer.attacker_payoff_table,
-                                           trainer.defender_payoff_table)
+                                                           trainer.defender_payoff_table)
         logging.info(f'Attacker MSNE: {attacker_strategy}')
         attacker_ms.update_probabilities(attacker_strategy)
         defender_policy = trainer.train_defender(attacker_ms, defender_iteration)
@@ -288,6 +288,10 @@ def do_mtd(prefix, index,
 @click.option('--env_params_t_epoch', default=50, help='The number of time steps before an environment is reset')
 @click.option('--rl_params_random_exploration', default=0.1, help='Exploration Fraction', show_default=True)
 @click.option('--rl_params_gamma', default=0.90, help='Gamma', show_default=True)
+@click.option('--rl_params_nb_train', default=30, help='Number of train steps after rollout', show_default=True)
+@click.option('--rl_params_nb_rollout', default=100, help='Number of rollout steps before fitting', show_default=True)
+@click.option('--rl_params_batch_size', default=128, help='Sample size from experience replay buffer', show_default=True)
+@click.option('--rl_params_buffer_size', default=5000, help='experience replay buffer size', show_default=True)
 @click.option('--policy_params_activation', default='tanh', help='Activation Function', show_default=True)
 @click.option('--policy_params_layers', default='32, 32', help='MLP Network Layers', show_default=True)
 def do_rc(env_id,
@@ -301,6 +305,10 @@ def do_rc(env_id,
           training_params_action_noise_sigma,
           rl_params_random_exploration,
           rl_params_gamma,
+          rl_params_nb_train,
+          rl_params_buffer_size,
+          rl_params_batch_size,
+          rl_params_nb_rollout,
           policy_params_activation,
           policy_params_layers,
           env_params_compromise_actuation_prob,
@@ -332,6 +340,10 @@ def do_rc(env_id,
         'rl_params': {
             'random_exploration': rl_params_random_exploration,
             'gamma': rl_params_gamma,
+            'nb_train_steps': rl_params_nb_train,
+            'nb_rollout_steps': rl_params_nb_rollout,
+            'batch_size': rl_params_batch_size,
+            'buffer_size': rl_params_buffer_size,
         },
         'policy_params': {
             'act_fun': getattr(tf.nn, policy_params_activation),
