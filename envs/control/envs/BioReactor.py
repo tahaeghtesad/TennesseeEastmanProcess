@@ -17,7 +17,7 @@ class BioReactor(ControlEnv):
         self.t_epoch = t_epoch
 
         self.action_space = gym.spaces.Box(low=np.array([0.0, 0.0]), high=np.array([3.0, 8.0]))
-        self.observation_space = gym.spaces.Box(low=np.array([0.05, 0.05]), high=np.array([10., 10.]))
+        self.observation_space = gym.spaces.Box(low=np.array([0.00, 0.00]), high=np.array([10., 10.]))
 
         # self.observation_space = gym.spaces.Box(low=np.array([0.6, 1] * history_length + [0.] * (self.adversarial_control_env.env.action_dim + self.adversarial_control_env.env.observation_dim)) if self.include_compromise else np.array([-5., -5.] * history_length),
         #                                         high=np.array([1.2, 2.] * history_length + [1.] * (self.adversarial_control_env.env.action_dim + self.adversarial_control_env.env.observation_dim)) if self.include_compromise else np.array([5., 5.] * history_length))

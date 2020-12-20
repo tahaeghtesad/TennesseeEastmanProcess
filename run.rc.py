@@ -108,15 +108,6 @@ def generate_runs(repeat, index, parallelization):
             index += 1
             count += 1
 
-    # action noise
-    for an in [0.01, 0.05, 0.1, 0.5]:
-        for r in range(repeat):
-            runs.append(create_run(
-                index, 'action_noise', action_noise_sigma=an, parallelization=parallelization
-            ))
-            index += 1
-            count += 1
-
     ## Changing Env configuration
 
     # t_epoch
@@ -141,7 +132,7 @@ def generate_runs(repeat, index, parallelization):
     for hl in [1, 2, 4, 8, 16]:
         for r in range(repeat):
             runs.append(create_run(
-                index, 'env_noise', history_length=hl, parallelization=parallelization
+                index, 'history_length', history_length=hl, parallelization=parallelization
             ))
             index += 1
             count += 1
