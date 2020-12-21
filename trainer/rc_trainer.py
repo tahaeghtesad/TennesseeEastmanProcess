@@ -1,4 +1,4 @@
-from typing import Tuple
+import copy
 
 import gym
 import wandb
@@ -113,8 +113,16 @@ class RCTrainer(Trainer):
         return SimpleWrapperAgent(defender_model)
 
     def get_payoff(self, attacker: Agent, defender: Agent, repeat=50, compromise=None, log=True):
+
+        params = copy.deepcopy(self.env_params)
+        params.update({
+            't_epoch': 200,
+            'noise_sigma': 0.00,
+            'test_env': True
+        })
+
         if self.env_id == 'BRP':
-            env = AdversarialControlEnv('BRP-v0', attacker, defender, **self.env_params)
+            env = AdversarialControlEnv('BRP-v0', attacker, defender, **params)
         else:
             raise Exception('Invalid Environment')
 
