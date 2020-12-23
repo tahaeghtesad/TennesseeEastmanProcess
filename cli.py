@@ -55,11 +55,11 @@ def do_marl(prefix, index, group, params, max_iter, trainer_class, nash_solver):
         params_back['policy_params']['act_fun'] = params_back['policy_params']['act_fun'].__name__
         json.dump(params_back, fd)
 
-    run = wandb.init(project='tep', config=params_back, dir=f'{prefix}/{index}', group=group)
-    run.save(f'{prefix}/{index}/info.json')
-    run.save(f'{prefix}/{index}/log.log')
-    run.save(f'{prefix}/{index}/params/*')
-    run.save(f'{prefix}/{index}/*.npy')
+    run = wandb.init(project='tep', config=params_back, dir=f'$TMPDIR/', group=group)
+    # run.save(f'{prefix}/{index}/info.json')
+    # run.save(f'{prefix}/{index}/log.log')
+    # run.save(f'{prefix}/{index}/params/*')
+    # run.save(f'{prefix}/{index}/*.npy')
 
     trainer = trainer_class(
         f'{prefix}/{index}',
