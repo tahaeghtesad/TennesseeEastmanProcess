@@ -8,9 +8,9 @@ def create_run(
         parallelization,
         env='BRP',
         max_iter=1,
-        training_steps=500_000,
+        training_steps=300_000,
         tb_logging=False,
-        action_noise_sigma=0.05,
+        action_noise_sigma=0.01,
         compromise_actuation_prob=0.0,
         compromise_observation_prob=0.0,
         power=0.3,
@@ -18,13 +18,13 @@ def create_run(
         history_length=1,
         include_compromise=False,
         test_env=False,
-        t_epoch=50,
+        t_epoch=200,
         gamma=0.90,
-        epsilon=0.01,
+        epsilon=0.05,
         act_fun='tanh',
         layers='25, 25, 25, 25',
         nb_train=30,
-        buffer_size=5000,
+        buffer_size=10000,
         batch_size=128,
         nb_rollout=100,
 ):
@@ -72,7 +72,7 @@ def generate_runs(repeat, index, parallelization):
     ## Changing The Agent Conf
 
     # Epsilon
-    for e in [0.0, 0.01, 0.1, 0.2]:
+    for e in [0.0, 0.01, 0.05, 0.1, 0.2]:
         for r in range(repeat):
             runs.append(create_run(
                 index, 'epsilon', epsilon=e, parallelization=parallelization
@@ -81,7 +81,7 @@ def generate_runs(repeat, index, parallelization):
             count += 1
 
     # Gamma
-    for g in [0.9, 0.5, 0.1]:
+    for g in [0.99, 0.9, 0.5, 0.1]:
         for r in range(repeat):
             runs.append(create_run(
                 index, 'gamma', gamma=g, parallelization=parallelization
@@ -99,7 +99,7 @@ def generate_runs(repeat, index, parallelization):
             count += 1
 
     # layers
-    for l in ['25, 25, 25, 25', '25, 25, 25', '25, 25', '128, 64', '128, 64, 32']:
+    for l in ['25, 25, 25, 25, 25', '25, 25, 25', '25, 25', '128, 64', '128, 64, 32']:
         for r in range(repeat):
             runs.append(create_run(
                 index, 'layers', layers=l, parallelization=parallelization
@@ -137,7 +137,7 @@ def generate_runs(repeat, index, parallelization):
     ## Changing Env configuration
 
     # t_epoch
-    for te in [5, 10, 50, 100, 200]:
+    for te in [5, 10, 50, 100, 200, 300, 400, 500]:
         for r in range(repeat):
             runs.append(create_run(
                 index, 't_epoch', t_epoch=te, parallelization=parallelization
@@ -146,7 +146,7 @@ def generate_runs(repeat, index, parallelization):
             count += 1
 
     # noise sigma
-    for ns in [0.0, 0.05, 0.1, 0.5]:
+    for ns in [0.0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5]:
         for r in range(repeat):
             runs.append(create_run(
                 index, 'env_noise', noise_sigma=ns, parallelization=parallelization
@@ -155,7 +155,7 @@ def generate_runs(repeat, index, parallelization):
             count += 1
 
     # history_length
-    for hl in [1, 2, 4, 8, 16]:
+    for hl in [1, 2, 4, 8, 16, 32, 64]:
         for r in range(repeat):
             runs.append(create_run(
                 index, 'history_length', history_length=hl, parallelization=parallelization
@@ -204,7 +204,7 @@ python run.rc.py $SLURM_ARRAY_TASK_ID
 
 if __name__ == '__main__':
     parallelization = 2
-    start_index = 8000
+    start_index = 13000
     concurrent_runs = 350
     repeat = 10
     runs = generate_runs(repeat, start_index, parallelization)
