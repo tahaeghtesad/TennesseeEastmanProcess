@@ -176,7 +176,7 @@ conda activate tep-cpu
 cd /project/laszka/TennesseeEastmanProcess/
 export PATH=$PWD/gambit-project/:$PATH
 
-python run.rc.py $SLURM_ARRAY_TASK_ID
+python run.rc.full.py $SLURM_ARRAY_TASK_ID
 ''')
 
 

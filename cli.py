@@ -3,9 +3,7 @@ import sys
 
 import click
 import numpy as np
-from mpi4py import MPI
 
-from agents.RLAgents import ZeroAgent
 from trainer import MTDTrainer, RCTrainer
 import tensorflow as tf
 from util.nash_helpers import find_general_sum_mixed_ne, find_zero_sum_mixed_ne_gambit, get_payoff_from_table
@@ -55,7 +53,8 @@ def do_marl(prefix, index, group, params, max_iter, trainer_class, nash_solver):
         params_back['policy_params']['act_fun'] = params_back['policy_params']['act_fun'].__name__
         json.dump(params_back, fd)
 
-    run = wandb.init(project='tep', config=params_back, dir=f'$TMPDIR/', group=group, reinit=True)
+    tmpdir = os.environ['TMPDIR']
+    run = wandb.init(project='tep', config=params_back, dir=f'{tmpdir}/', group=group, reinit=True)
     # run.save(f'{prefix}/{index}/info.json')
     # run.save(f'{prefix}/{index}/log.log')
     # run.save(f'{prefix}/{index}/params/*')
@@ -366,5 +365,4 @@ cli.add_command(do_rc)
 cli.add_command(do_mtd)
 
 if __name__ == '__main__':
-    print(os.environ['PATH'])
     cli()
