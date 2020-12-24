@@ -82,8 +82,6 @@ def do_marl(prefix, index, group, params, max_iter, trainer_class, nash_solver):
     logger.info(f'Attacker Heuristics: {attacker_iteration}')
     logger.info(f'Defender Heuristics: {defender_iteration}')
 
-    aus, dus = [trainer.attacker_payoff_table[0, 0]], [trainer.defender_payoff_table[0, 0]]
-
     while attacker_iteration < max_iter or defender_iteration < max_iter:
         # Train Attacker
         logger.info(f'Training Attacker {attacker_iteration}')
@@ -100,7 +98,6 @@ def do_marl(prefix, index, group, params, max_iter, trainer_class, nash_solver):
         au, du = get_payoff_from_table(nash_solver, trainer.attacker_payoff_table, trainer.defender_payoff_table)
         wandb.log({'payoffs/attacker': au, 'payoffs/defender': du})
         logging.info(f'MSNE Attacker vs MSNE Defender Payoff: {au, du}')
-        logging.info(f'Improvement: {(du - aus[-1])/aus[-1]:}')
 
         # Train Defender
         logger.info(f'Training Defender {defender_iteration}')
