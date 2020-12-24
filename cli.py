@@ -97,7 +97,7 @@ def do_marl(prefix, index, group, params, max_iter, trainer_class, nash_solver):
         trainer.update_attacker_payoff_table(np.array([au for (au, du, _) in payoffs]),
                                              np.array([du for (au, du, _) in payoffs]))
         attacker_iteration += 1
-        au, du, _ = get_payoff_from_table(nash_solver, trainer.attacker_payoff_table, trainer.defender_payoff_table)
+        au, du = get_payoff_from_table(nash_solver, trainer.attacker_payoff_table, trainer.defender_payoff_table)
         wandb.log({'payoffs/attacker': au, 'payoffs/defender': du})
         logging.info(f'MSNE Attacker vs MSNE Defender Payoff: {au, du}')
         logging.info(f'Improvement: {(du - aus[-1])/aus[-1]:}')
@@ -114,7 +114,7 @@ def do_marl(prefix, index, group, params, max_iter, trainer_class, nash_solver):
         trainer.update_defender_payoff_table(np.array([au for (au, du, _) in payoffs]),
                                              np.array([du for (au, du, _) in payoffs]))
         defender_iteration += 1
-        au, du, _ = get_payoff_from_table(nash_solver, trainer.attacker_payoff_table, trainer.defender_payoff_table)
+        au, du = get_payoff_from_table(nash_solver, trainer.attacker_payoff_table, trainer.defender_payoff_table)
         wandb.log({'payoffs/attacker': au, 'payoffs/defender': du})
         logging.info(f'MSNE Attacker vs MSNE Defender Payoff: {au, du}')
 
