@@ -155,7 +155,7 @@ def generate_runs(repeat, index, parallelization):
 
 default_conf = [
     '-J TEP',
-    '-t 6:00:00',
+    '-t 24:00:00',
     '--mem 8GB',
     '-A laszka'
 ]
