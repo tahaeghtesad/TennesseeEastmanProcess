@@ -118,19 +118,19 @@ def generate_runs(repeat, index, parallelization):
             index += 1
             count += 1
 
-    # compromise both
-    for cu in [0., 0.5, 1.]:
-        for cy in [0., 0.5, 1.]:
-            for r in range(repeat):
-                runs.append(create_run(
-                    index,
-                    'do_compromise_both',
-                    compromise_observation_prob=cy,
-                    compromise_actuation_prob=cu,
-                    parallelization=parallelization
-                ))
-                index += 1
-                count += 1
+    # # compromise both
+    # for cu in [0., 0.5, 1.]:
+    #     for cy in [0., 0.5, 1.]:
+    #         for r in range(repeat):
+    #             runs.append(create_run(
+    #                 index,
+    #                 'do_compromise_both',
+    #                 compromise_observation_prob=cy,
+    #                 compromise_actuation_prob=cu,
+    #                 parallelization=parallelization
+    #             ))
+    #             index += 1
+    #             count += 1
 
     # change attacker power
     for p in [.05, 0.1, 0.2, 0.3, 0.5, 0.75, 1.]:
@@ -182,9 +182,9 @@ python run.rc.full.py $SLURM_ARRAY_TASK_ID
 
 
 if __name__ == '__main__':
-    parallelization = 1
+    parallelization = 2
     start_index = 16000
-    concurrent_runs = 100
+    concurrent_runs = 50
     repeat = 10
     runs = generate_runs(repeat, start_index, parallelization)
     assert len(runs) < 1001, 'Too many runs to schedule'
