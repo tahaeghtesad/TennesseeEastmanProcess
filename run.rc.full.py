@@ -7,7 +7,7 @@ def create_run(
         group,
         parallelization,
         env='BRP',
-        max_iter=14,
+        max_iter=8,
         training_steps=300_000,
         tb_logging=False,
         action_noise_sigma=0.01,
@@ -64,7 +64,7 @@ def generate_runs(repeat, index, parallelization):
     ## Baseline
     for r in range(repeat):
         runs.append(create_run(
-            index, 'baseline', parallelization=parallelization
+            index, 'do_baseline', parallelization=parallelization
         ))
         index += 1
         count += 1
@@ -119,17 +119,18 @@ def generate_runs(repeat, index, parallelization):
             count += 1
 
     # compromise both
-    for cucy in [0., 0.5, 1.]:
-        for r in range(repeat):
-            runs.append(create_run(
-                index,
-                'do_compromise_both',
-                compromise_observation_prob=cucy,
-                compromise_actuation_prob=cucy,
-                parallelization=parallelization
-            ))
-            index += 1
-            count += 1
+    for cu in [0., 0.5, 1.]:
+        for cy in [0., 0.5, 1.]:
+            for r in range(repeat):
+                runs.append(create_run(
+                    index,
+                    'do_compromise_both',
+                    compromise_observation_prob=cy,
+                    compromise_actuation_prob=cu,
+                    parallelization=parallelization
+                ))
+                index += 1
+                count += 1
 
     # change attacker power
     for p in [.05, 0.1, 0.2, 0.3, 0.5, 0.75, 1.]:
@@ -155,8 +156,8 @@ def generate_runs(repeat, index, parallelization):
 
 default_conf = [
     '-J TEP',
-    '-t 24:00:00',
-    '--mem 8GB',
+    '-t 48:00:00',
+    '--mem 12GB',
     '-A laszka'
 ]
 
@@ -181,14 +182,14 @@ python run.rc.full.py $SLURM_ARRAY_TASK_ID
 
 
 if __name__ == '__main__':
-    parallelization = 2
-    start_index = 15000
-    concurrent_runs = 50
-    repeat = 4
+    parallelization = 1
+    start_index = 16000
+    concurrent_runs = 100
+    repeat = 10
     runs = generate_runs(repeat, start_index, parallelization)
     assert len(runs) < 1001, 'Too many runs to schedule'
     if len(sys.argv) == 1:
-        target = 'dynamic.run.srun.sh'
+        target = 'dynamic.full.run.srun.sh'
         write_config(target, default_conf, runs, parallelization, concurrent_runs)
         print(f'running {["sbatch", target]}')
         subprocess.run(['sbatch', target])

@@ -132,8 +132,8 @@ class RCTrainer(Trainer):
         params = copy.deepcopy(self.env_params)
         params.update({
             't_epoch': 200,
-            'noise_sigma': 0.00,
-            'test_env': True
+            # 'noise_sigma': 0.00,
+            # 'test_env': True
         })
 
         if self.env_id == 'BRP':
