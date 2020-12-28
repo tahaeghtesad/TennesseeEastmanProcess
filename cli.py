@@ -73,8 +73,10 @@ def do_marl(prefix, index, group, params, max_iter, trainer_class, nash_solver):
     logging.info(f'Defender MSNE: {defender_strategy}')
     attacker_ms.update_probabilities(attacker_strategy)
     defender_ms.update_probabilities(defender_strategy)
-
-    wandb.log({'payoffs/attacker': trainer.attacker_payoff_table[0, 0], 'payoffs/defender': trainer.defender_payoff_table[0, 0]})
+    wandb.log({'payoffs/attacker': trainer.attacker_payoff_table[0, 0],
+               'payoffs/defender': trainer.defender_payoff_table[0, 0],
+               'strategies/attacker': wandb.Histogram(attacker_strategy),
+               'strategies/defender': wandb.Histogram(defender_strategy)})
 
     attacker_iteration = len(attacker_ms.policies)
     defender_iteration = len(defender_ms.policies)
@@ -96,7 +98,10 @@ def do_marl(prefix, index, group, params, max_iter, trainer_class, nash_solver):
                                              np.array([du for (au, du, _) in payoffs]))
         attacker_iteration += 1
         au, du = get_payoff_from_table(nash_solver, trainer.attacker_payoff_table, trainer.defender_payoff_table)
-        wandb.log({'payoffs/attacker': au, 'payoffs/defender': du})
+        wandb.log({'payoffs/attacker': au,
+                   'payoffs/defender': du,
+                   'strategies/attacker': wandb.Histogram(attacker_strategy),
+                   'strategies/defender': wandb.Histogram(defender_strategy)})
         logging.info(f'MSNE Attacker vs MSNE Defender Payoff: {au, du}')
 
         # Train Defender
@@ -112,7 +117,10 @@ def do_marl(prefix, index, group, params, max_iter, trainer_class, nash_solver):
                                              np.array([du for (au, du, _) in payoffs]))
         defender_iteration += 1
         au, du = get_payoff_from_table(nash_solver, trainer.attacker_payoff_table, trainer.defender_payoff_table)
-        wandb.log({'payoffs/attacker': au, 'payoffs/defender': du})
+        wandb.log({'payoffs/attacker': au,
+                   'payoffs/defender': du,
+                   'strategies/attacker': wandb.Histogram(attacker_strategy),
+                   'strategies/defender': wandb.Histogram(defender_strategy)})
         logging.info(f'MSNE Attacker vs MSNE Defender Payoff: {au, du}')
 
     # wandb.run.summary.update({'base_defender_payoff': du})
