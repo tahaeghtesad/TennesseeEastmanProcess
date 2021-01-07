@@ -71,6 +71,7 @@ class AdversarialControlEnv:
         info['a'] = attacker_action[self.env.observation_dim:]
         info['o'] = attacker_action[:self.env.observation_dim]
         info['d'] = defender_action
+        info['c'] = self.compromise
 
         return (np.concatenate((np.array(self.attacker_history).flatten(), self.compromise), axis=0) if self.include_compromise else np.array(self.attacker_history).flatten(),
                 np.concatenate((np.array(self.defender_history).flatten(), self.compromise), axis=0) if self.include_compromise else np.array(self.defender_history).flatten()),\

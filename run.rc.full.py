@@ -156,8 +156,8 @@ def generate_runs(repeat, index, parallelization):
 
 default_conf = [
     '-J TEP',
-    '-t 48:00:00',
-    '--mem 12GB',
+    '-t 24:00:00',
+    '--mem 4GB',
     '-A laszka'
 ]
 
@@ -183,7 +183,7 @@ python run.rc.full.py $SLURM_ARRAY_TASK_ID
 
 if __name__ == '__main__':
     parallelization = 2
-    start_index = 16000
+    start_index = 17000
     concurrent_runs = 50
     repeat = 10
     runs = generate_runs(repeat, start_index, parallelization)

@@ -75,8 +75,14 @@ def do_marl(prefix, index, group, params, max_iter, trainer_class, nash_solver):
     defender_ms.update_probabilities(defender_strategy)
     wandb.log({'payoffs/attacker': trainer.attacker_payoff_table[0, 0],
                'payoffs/defender': trainer.defender_payoff_table[0, 0],
-               'strategies/attacker': wandb.Histogram(attacker_strategy),
-               'strategies/defender': wandb.Histogram(defender_strategy)})
+               'strategies/attacker': wandb.Histogram(np_histogram=(
+                   np.pad(attacker_strategy, (0, max_iter - attacker_strategy.shape[0])),
+                   np.arange(max_iter + 1)
+               )),
+               'strategies/defender': wandb.Histogram(np_histogram=(
+                   np.pad(defender_strategy, (0, max_iter - defender_strategy.shape[0])),
+                   np.arange(max_iter + 1)
+               ))})
 
     attacker_iteration = len(attacker_ms.policies)
     defender_iteration = len(defender_ms.policies)
@@ -100,8 +106,14 @@ def do_marl(prefix, index, group, params, max_iter, trainer_class, nash_solver):
         au, du = get_payoff_from_table(nash_solver, trainer.attacker_payoff_table, trainer.defender_payoff_table)
         wandb.log({'payoffs/attacker': au,
                    'payoffs/defender': du,
-                   'strategies/attacker': wandb.Histogram(attacker_strategy),
-                   'strategies/defender': wandb.Histogram(defender_strategy)})
+                   'strategies/attacker': wandb.Histogram(np_histogram=(
+                       np.pad(attacker_strategy, (0, max_iter - attacker_strategy.shape[0])),
+                       np.arange(max_iter + 1)
+                   )),
+                   'strategies/defender': wandb.Histogram(np_histogram=(
+                       np.pad(defender_strategy, (0, max_iter - defender_strategy.shape[0])),
+                       np.arange(max_iter + 1)
+                   ))})
         logging.info(f'MSNE Attacker vs MSNE Defender Payoff: {au, du}')
 
         # Train Defender
@@ -119,8 +131,14 @@ def do_marl(prefix, index, group, params, max_iter, trainer_class, nash_solver):
         au, du = get_payoff_from_table(nash_solver, trainer.attacker_payoff_table, trainer.defender_payoff_table)
         wandb.log({'payoffs/attacker': au,
                    'payoffs/defender': du,
-                   'strategies/attacker': wandb.Histogram(attacker_strategy),
-                   'strategies/defender': wandb.Histogram(defender_strategy)})
+                   'strategies/attacker': wandb.Histogram(np_histogram=(
+                       np.pad(attacker_strategy, (0, max_iter - attacker_strategy.shape[0])),
+                       np.arange(max_iter + 1)
+                   )),
+                   'strategies/defender': wandb.Histogram(np_histogram=(
+                       np.pad(defender_strategy, (0, max_iter - defender_strategy.shape[0])),
+                       np.arange(max_iter + 1)
+                   ))})
         logging.info(f'MSNE Attacker vs MSNE Defender Payoff: {au, du}')
 
     # wandb.run.summary.update({'base_defender_payoff': du})
@@ -134,44 +152,65 @@ def do_marl(prefix, index, group, params, max_iter, trainer_class, nash_solver):
     run.finish(0)
 
 
-def log_results(attacker_ms, defender_ms, params, trainer, nash_solver):
+def get_best_strategy(strategy):
+    sort_list = np.argsort(strategy)
+    if sort_list.shape[0] == 1:
+        return sort_list[0]
+
+    if sort_list[0] == 0:
+        return sort_list[1]
+
+    return sort_list[0]
+
+
+def log_results(attacker_ms, defender_ms, params, trainer, nash_solver, repeat=20):
+    compromise_list = {}
+
+    def gen_compromise(step):
+        if not step in compromise_list:
+            compromise_list[step] = np.concatenate(
+                (np.random.rand(2) < params['env_params']['compromise_observation_prob'],
+                 np.random.rand(2) < params['env_params']['compromise_actuation_prob'])
+                , axis=0).astype(np.float)
+        return compromise_list[step]
+
     attacker_strategy, defender_strategy = nash_solver(trainer.attacker_payoff_table,
                                                        trainer.defender_payoff_table)
-    compromise = np.concatenate(
-        (np.random.rand(2) < params['env_params']['compromise_observation_prob'],
-         np.random.rand(2) < params['env_params']['compromise_actuation_prob'])
-        , axis=0).astype(np.float)
-
     _, du_na, no_attack = trainer.get_payoff(
         attacker_ms.policies[0],
         defender_ms.policies[0],
-        repeat=10,
-        compromise=compromise,
+        repeat=repeat,
+        compromise=gen_compromise,
         log=False
     )
 
     _, du_nd, no_defense = trainer.get_payoff(
-        attacker_ms.policies[np.argmax(attacker_strategy)],
+        attacker_ms.policies[get_best_strategy(attacker_strategy)],
         defender_ms.policies[0],
-        repeat=10,
-        compromise=compromise,
+        repeat=repeat,
+        compromise=gen_compromise,
         log=False
     )
 
     _, du_d, defense = trainer.get_payoff(
-        attacker_ms.policies[np.argmax(attacker_strategy)],
-        defender_ms.policies[np.argmax(defender_strategy)],
-        repeat=10,
-        compromise=compromise,
+        attacker_ms.policies[get_best_strategy(attacker_strategy)],
+        defender_ms.policies[get_best_strategy(defender_strategy)],
+        repeat=repeat,
+        compromise=gen_compromise,
         log=False
     )
+
     for step in range(len(no_attack.data)):
         columns = no_attack.columns[1:]
         log = {}
         for i, col in enumerate(columns):
-            log[f'report/{col}/no_attack'] = no_attack.data[step][i + 1]
-            log[f'report/{col}/defense'] = defense.data[step][i + 1]
-            log[f'report/{col}/no_defense'] = no_defense.data[step][i + 1]
+            if col.startswith('c'): # This is just the compromise vector. It is the same for all envs.
+                log[f'report/{col}'] = no_attack.data[step][i + 1]
+            else:
+                log[f'report/{col}/no_attack'] = no_attack.data[step][i + 1]
+                log[f'report/{col}/defense'] = defense.data[step][i + 1]
+                log[f'report/{col}/no_defense'] = no_defense.data[step][i + 1]
+
         wandb.log(log)
 
     wandb.run.summary.update({
@@ -294,7 +333,8 @@ def do_mtd(prefix, index,
 @click.option('--rl_params_gamma', default=0.90, help='Gamma', show_default=True)
 @click.option('--rl_params_nb_train', default=30, help='Number of train steps after rollout', show_default=True)
 @click.option('--rl_params_nb_rollout', default=100, help='Number of rollout steps before fitting', show_default=True)
-@click.option('--rl_params_batch_size', default=128, help='Sample size from experience replay buffer', show_default=True)
+@click.option('--rl_params_batch_size', default=128, help='Sample size from experience replay buffer',
+              show_default=True)
 @click.option('--rl_params_buffer_size', default=5000, help='experience replay buffer size', show_default=True)
 @click.option('--policy_params_activation', default='tanh', help='Activation Function', show_default=True)
 @click.option('--policy_params_layers', default='32, 32', help='MLP Network Layers', show_default=True)

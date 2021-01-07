@@ -76,7 +76,7 @@ class BioReactor(ControlEnv):
         if self.test_env:
             self.x = self.goal.copy()
         else:
-            self.x = self.observation_space.sample()
+            self.x = self.goal * (1. + np.random.normal(loc=np.zeros(2, ), scale=np.array([.3, .3])))
         self.logger.debug(f'Reset... Starting Point: {self.x}')
         return self.x
 
@@ -90,23 +90,30 @@ def mu(x2: float, mu_max: float = 0.53, km: float = 0.12, k1: float = 0.4545) ->
 
 class BioReactorAttacker(gym.Env):  # This is a noise generator attacker.
 
-    def __init__(self, defender: Agent, compromise_actuation_prob: float, compromise_observation_prob: float, power: float = 0.3, noise_sigma=0.07,
+    def __init__(self, defender: Agent, compromise_actuation_prob: float, compromise_observation_prob: float,
+                 power: float = 0.3, noise_sigma=0.07,
                  history_length=12, include_compromise=True, test_env=False, t_epoch=50) -> None:
         self.include_compromise = include_compromise
         self.logger = logging.getLogger(__class__.__name__)
 
         self.adversarial_control_env = AdversarialControlEnv('BRP-v0', None, defender, compromise_actuation_prob,
-                                                             compromise_observation_prob, history_length, include_compromise, noise_sigma, t_epoch, power, test_env)
+                                                             compromise_observation_prob, history_length,
+                                                             include_compromise, noise_sigma, t_epoch, power, test_env)
 
-        self.observation_space = gym.spaces.Box(low=np.array([-5., -5.] * history_length + [0.] * (self.adversarial_control_env.env.action_dim + self.adversarial_control_env.env.observation_dim)) if self.include_compromise else np.array([-5., -5.] * history_length),
-                                                high=np.array([5., 5.]  * history_length + [0.] * (self.adversarial_control_env.env.action_dim + self.adversarial_control_env.env.observation_dim)) if self.include_compromise else np.array([-5., -5.] * history_length))
-        self.action_space = gym.spaces.Box(low=-power * np.array([1.] * (self.adversarial_control_env.env.action_dim + self.adversarial_control_env.env.observation_dim)),
-                                           high=power * np.array([1.] * (self.adversarial_control_env.env.action_dim + self.adversarial_control_env.env.observation_dim)))
+        self.observation_space = gym.spaces.Box(low=np.array([-5., -5.] * history_length + [0.] * (
+                    self.adversarial_control_env.env.action_dim + self.adversarial_control_env.env.observation_dim)) if self.include_compromise else np.array(
+            [-5., -5.] * history_length),
+                                                high=np.array([5., 5.] * history_length + [0.] * (
+                                                            self.adversarial_control_env.env.action_dim + self.adversarial_control_env.env.observation_dim)) if self.include_compromise else np.array(
+                                                    [-5., -5.] * history_length))
+        self.action_space = gym.spaces.Box(low=-power * np.array(
+            [1.] * (self.adversarial_control_env.env.action_dim + self.adversarial_control_env.env.observation_dim)),
+                                           high=power * np.array([1.] * (
+                                                       self.adversarial_control_env.env.action_dim + self.adversarial_control_env.env.observation_dim)))
 
         self.defender_obs = np.zeros((4,))
 
     def step(self, action: np.ndarray) -> Tuple[Any, float, bool, Dict]:
-
         self.adversarial_control_env.set_attacker(ConstantAgent(action))
         (obs, _), (reward, _), done, info = self.adversarial_control_env.step()
 
@@ -122,20 +129,25 @@ class BioReactorAttacker(gym.Env):  # This is a noise generator attacker.
 
 class BioReactorDefender(gym.Env):
 
-    def __init__(self, attacker: Agent, compromise_actuation_prob: float, compromise_observation_prob: float, power: float = 0.3, noise_sigma=0.07, test_env=False,
+    def __init__(self, attacker: Agent, compromise_actuation_prob: float, compromise_observation_prob: float,
+                 power: float = 0.3, noise_sigma=0.07, test_env=False,
                  history_length=12, include_compromise=True, t_epoch=50) -> None:
         self.include_compromise = include_compromise
         self.logger = logging.getLogger(__class__.__name__)
 
         self.adversarial_control_env = AdversarialControlEnv('BRP-v0', attacker, None, compromise_actuation_prob,
-                                                             compromise_observation_prob, history_length, include_compromise, noise_sigma, t_epoch, power, test_env)
+                                                             compromise_observation_prob, history_length,
+                                                             include_compromise, noise_sigma, t_epoch, power, test_env)
 
-        self.observation_space = gym.spaces.Box(low=np.tile(self.adversarial_control_env.env.observation_space.low, history_length),
-                                                high=np.tile(self.adversarial_control_env.env.observation_space.high, history_length))
+        self.observation_space = gym.spaces.Box(
+            low=np.tile(self.adversarial_control_env.env.observation_space.low, history_length),
+            high=np.tile(self.adversarial_control_env.env.observation_space.high, history_length))
         if include_compromise:
             self.observation_space = gym.spaces.Box(
-                low=np.append(self.observation_space.low, np.zeros(self.adversarial_control_env.env.action_dim + self.adversarial_control_env.env.observation_dim)),
-                high=np.append(self.observation_space.high, np.ones(self.adversarial_control_env.env.action_dim + self.adversarial_control_env.env.observation_dim)))
+                low=np.append(self.observation_space.low, np.zeros(
+                    self.adversarial_control_env.env.action_dim + self.adversarial_control_env.env.observation_dim)),
+                high=np.append(self.observation_space.high, np.ones(
+                    self.adversarial_control_env.env.action_dim + self.adversarial_control_env.env.observation_dim)))
 
         self.action_space = gym.spaces.Box(low=self.adversarial_control_env.env.action_space.low,
                                            high=self.adversarial_control_env.env.action_space.high)
@@ -152,4 +164,3 @@ class BioReactorDefender(gym.Env):
 
     def render(self, mode='human') -> None:
         raise NotImplementedError
-

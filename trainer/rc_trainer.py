@@ -47,20 +47,21 @@ class RCTrainer(Trainer):
     def wandb_callback(locals_, globals_):
         self_ = locals_['self']
 
-        variables = ['u', 'x', 'dx', 'a', 'o', 'd']
+        variables = ['u', 'x', 'dx', 'a', 'o', 'd', 'c']
 
-        if 'info' in locals_:
-            for var in variables:
-                if var in locals_['info']:
-                    for i in range(len(locals_['info'][var])):
-                        wandb.log({f'env/{var}{i}': locals_['info'][var][i]}, step=self_.num_timesteps)
+        # if 'info' in locals_:
+        #     for var in variables:
+        #         if var in locals_['info']:
+        #             for i in range(len(locals_['info'][var])):
+        #                 wandb.log({f'env/{var}{i}': locals_['info'][var][i]}, commit=False)
 
         if 'reward' in locals_:
-            wandb.log({f'rewards/step': locals_['reward']}, step=self_.num_timesteps)
+            wandb.log({f'rewards/step': locals_['reward']}, commit=False)
 
         if 'episode_reward' in locals_:
-            wandb.log({f'rewards/episode': locals_['episode_reward']}, step=self_.num_timesteps)
+            wandb.log({f'rewards/episode': locals_['episode_reward']}, commit=False)
 
+        wandb.log({})
         return True
 
     def get_policy_class(self, policy_params):
@@ -92,7 +93,7 @@ class RCTrainer(Trainer):
 
         attacker_model.learn(
             total_timesteps=self.training_params['training_steps'],
-            callback=self.callback,
+            callback=self.wandb_callback,
             tb_log_name=f'attacker_{iteration}'
         )
 
@@ -119,7 +120,7 @@ class RCTrainer(Trainer):
 
         defender_model.learn(
             total_timesteps=self.training_params['training_steps'],
-            callback=self.callback,
+            callback=self.wandb_callback,
             tb_log_name=f'defender_{iteration}'
         )
 
@@ -133,7 +134,7 @@ class RCTrainer(Trainer):
         params.update({
             't_epoch': 200,
             # 'noise_sigma': 0.00,
-            # 'test_env': True
+            'test_env': True,
         })
 
         if self.env_id == 'BRP':
@@ -145,11 +146,12 @@ class RCTrainer(Trainer):
         rd = 0
         total_steps = 0
 
-        columns = ['reward', 'x_0', 'x_1', 'a_0', 'a_1', 'd_0', 'd_1', 'u_0', 'u_1', 'dx_0', 'dx_1', 'o_0', 'o_1']
+        columns = ['reward', 'x_0', 'x_1', 'a_0', 'a_1', 'd_0', 'd_1', 'u_0', 'u_1', 'dx_0', 'dx_1', 'o_0', 'o_1', 'c_0', 'c_1', 'c_2', 'c_3']
         report_table = wandb.Table(columns=['step'] + columns)
 
-        for _ in range(repeat):
-            env.reset(compromise)
+        for e in range(repeat):
+            compromise_vector = compromise(e) if compromise is not None else None
+            env.reset(compromise_vector)
             done = False
             iter = 0
             while not done:
@@ -173,7 +175,11 @@ class RCTrainer(Trainer):
                     info['dx'][0],
                     info['dx'][1],
                     info['o'][0],
-                    info['o'][1]
+                    info['o'][1],
+                    info['c'][0],
+                    info['c'][1],
+                    info['c'][2],
+                    info['c'][3],
                 )
 
                 if log:
@@ -190,7 +196,11 @@ class RCTrainer(Trainer):
                         'test/x0': info['x'][0],
                         'test/x1': info['x'][1],
                         'test/o0': info['o'][0],
-                        'test/o1': info['o'][1]
+                        'test/o1': info['o'][1],
+                        'test/c_0': info['c'][0],
+                        'test/c_1': info['c'][1],
+                        'test/c_2': info['c'][2],
+                        'test/c_3': info['c'][3],
                     })
 
                 total_steps += 1
