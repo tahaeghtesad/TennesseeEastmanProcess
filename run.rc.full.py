@@ -61,94 +61,15 @@ def generate_runs(repeat, index, parallelization):
 
     runs = []
 
-    ## Baseline
-    for r in range(repeat):
-        runs.append(create_run(
-            index, 'do_baseline', parallelization=parallelization
-        ))
-        index += 1
-        count += 1
-
-    ## Changing The Agent Conf
-
-
-    ## Changing Env configuration
-
-    # noise sigma
-    for ns in [0.0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5]:
-        for r in range(repeat):
-            runs.append(create_run(
-                index, 'do_env_noise', noise_sigma=ns, parallelization=parallelization
-            ))
-            index += 1
-            count += 1
-
-    # history_length
-    for hl in [1, 2, 4, 8, 16, 32, 64]:
-        for r in range(repeat):
-            runs.append(create_run(
-                index, 'do_history_length', history_length=hl, parallelization=parallelization
-            ))
-            index += 1
-            count += 1
-
-    # start from set
-    for r in range(repeat):
-        runs.append(create_run(
-            index, 'do_start_set', test_env=True, parallelization=parallelization
-        ))
-        index += 1
-        count += 1
-
-    # change compromise actuation
-    for cu in [0.0, 0.25, 0.5, .75, 1.]:
-        for r in range(repeat):
-            runs.append(create_run(
-                index, 'do_compromise_actuation', compromise_actuation_prob=cu, parallelization=parallelization
-            ))
-            index += 1
-            count += 1
-
-    # change compromise observation
-    for cy in [0.0, 0.25, 0.5, .75, 1.]:
-        for r in range(repeat):
-            runs.append(create_run(
-                index, 'do_compromise_observation', compromise_observation_prob=cy, parallelization=parallelization
-            ))
-            index += 1
-            count += 1
-
-    # # compromise both
-    # for cu in [0., 0.5, 1.]:
-    #     for cy in [0., 0.5, 1.]:
-    #         for r in range(repeat):
-    #             runs.append(create_run(
-    #                 index,
-    #                 'do_compromise_both',
-    #                 compromise_observation_prob=cy,
-    #                 compromise_actuation_prob=cu,
-    #                 parallelization=parallelization
-    #             ))
-    #             index += 1
-    #             count += 1
-
-    # change attacker power
-    for p in [.05, 0.1, 0.2, 0.3, 0.5, 0.75, 1.]:
-        for r in range(repeat):
-            runs.append(create_run(
-                index, 'do_power', power=p, parallelization=parallelization
-            ))
-            index += 1
-            count += 1
-
-    # change include compromise
-    for ic in [True, False]:
-        for r in range(repeat):
-            runs.append(create_run(
-                index, 'do_compromise', include_compromise=ic, parallelization=parallelization
-            ))
-            index += 1
-            count += 1
+    runs.append(create_run(
+        index,
+        'do_test',
+        parallelization=parallelization,
+        max_iter=20,
+        epsilon=0.01,
+        noise_sigma=0.0,
+        action_noise_sigma=0.005,
+    ))
 
     print(f'Total {count} jobs were created.')
     return runs
@@ -156,8 +77,8 @@ def generate_runs(repeat, index, parallelization):
 
 default_conf = [
     '-J TEP',
-    '-t 24:00:00',
-    '--mem 4GB',
+    '-t 48:00:00',
+    '--mem 16GB',
     '-A laszka'
 ]
 
@@ -182,8 +103,8 @@ python run.rc.full.py $SLURM_ARRAY_TASK_ID
 
 
 if __name__ == '__main__':
-    parallelization = 2
-    start_index = 17000
+    parallelization = 8
+    start_index = 18000
     concurrent_runs = 50
     repeat = 10
     runs = generate_runs(repeat, start_index, parallelization)
