@@ -49,7 +49,7 @@ class BioReactor(ControlEnv):
             u[0] * (u[1] - self.x[1]) - mu(self.x[1]) / 0.4 * self.x[0]
         ])
 
-        self.x = self.x * 0.1 + dx
+        self.x = self.x + dx * 0.1
         self.x = self.clip(self.x)
 
         win = self.t_epoch == self.step_count
