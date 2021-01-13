@@ -78,6 +78,12 @@ class AdversarialControlEnv:
                (-reward, reward), done, info
 
     def reset(self, compromise=None):
+
+        if self.attacker is not None:
+            self.attacker.reset()
+        if self.defender is not None:
+            self.defender.reset()
+
         obs = self.env.reset()
 
         self.compromise = np.concatenate(

@@ -1,22 +1,18 @@
 import copy
+import logging
 
-import gym
+import numpy as np
+import tensorflow as tf
 import wandb
 from stable_baselines import DDPG
 from stable_baselines.common.noise import NormalActionNoise
-from wandb import Table
-
-import envs
 from stable_baselines.ddpg import LnMlpPolicy
 
-from agents.RLAgents import Agent, SimpleWrapperAgent, MixedStrategyAgent, HistoryAgent, LimitedHistoryAgent, \
-    SinglePolicyMixedStrategyAgent, ZeroAgent
+from agents.RLAgents import Agent, SimpleWrapperAgent, SinglePolicyMixedStrategyAgent, ZeroAgent
 from envs.control.adversarial_control import AdversarialControlEnv
-from envs.control.envs import BioReactorDefender, BioReactorAttacker
+from envs.control.envs import BioReactorDefender, BioReactorAttacker, ThreeTankDefender, ThreeTankAttacker
 from trainer.trainer import Trainer
-import tensorflow as tf
-import numpy as np
-import logging
+
 
 class RCTrainer(Trainer):
 
@@ -78,6 +74,8 @@ class RCTrainer(Trainer):
         self.logger.info(f'Starting attacker training for {self.training_params["training_steps"]} steps.')
         if self.env_id == 'BRP':
             env = BioReactorAttacker(defender, **self.env_params)
+        elif self.env_id == 'TT':
+            env = ThreeTankAttacker(defender, **self.env_params)
         else:
             raise Exception('Invalid Environment')
 
@@ -105,6 +103,8 @@ class RCTrainer(Trainer):
         self.logger.info(f'Starting defender training for {self.training_params["training_steps"]} steps.')
         if self.env_id == 'BRP':
             env = BioReactorDefender(attacker, **self.env_params)
+        elif self.env_id == 'TT':
+            env = ThreeTankDefender(attacker, **self.env_params)
         else:
             raise Exception('Invalid Environment')
 
@@ -137,16 +137,13 @@ class RCTrainer(Trainer):
             'test_env': True,
         })
 
-        if self.env_id == 'BRP':
-            env = AdversarialControlEnv('BRP-v0', attacker, defender, **params)
-        else:
-            raise Exception('Invalid Environment')
+        env = AdversarialControlEnv(f'{self.env_id}-v0', attacker, defender, **params)
 
         ra = 0
         rd = 0
         total_steps = 0
 
-        columns = ['reward', 'x_0', 'x_1', 'a_0', 'a_1', 'd_0', 'd_1', 'u_0', 'u_1', 'dx_0', 'dx_1', 'o_0', 'o_1', 'c_0', 'c_1', 'c_2', 'c_3']
+        columns = ['reward', 'x_0', 'x_1', 'x_2', 'a_0', 'a_1', 'd_0', 'd_1', 'u_0', 'u_1', 'dx_0', 'dx_1', 'dx_2', 'o_0', 'o_1', 'c_0', 'c_1', 'c_2', 'c_3']
         report_table = wandb.Table(columns=['step'] + columns)
 
         for e in range(repeat):
@@ -166,6 +163,7 @@ class RCTrainer(Trainer):
                     reward_d,
                     info['x'][0],
                     info['x'][1],
+                    info['x'][2] if info['x'].shape[0] == 3 else 0,
                     info['a'][0],
                     info['a'][1],
                     info['d'][0],
@@ -174,6 +172,7 @@ class RCTrainer(Trainer):
                     info['u'][1],
                     info['dx'][0],
                     info['dx'][1],
+                    info['dx'][2] if info['dx'].shape[0] == 3 else 0,
                     info['o'][0],
                     info['o'][1],
                     info['c'][0],
@@ -193,8 +192,10 @@ class RCTrainer(Trainer):
                         'test/u1': info['u'][1],
                         'test/dx0': info['dx'][0],
                         'test/dx1': info['dx'][1],
+                        'test/dx2': info['dx'][2] if info['dx'].shape[0] == 3 else 0,
                         'test/x0': info['x'][0],
                         'test/x1': info['x'][1],
+                        'test/x2': info['x'][2] if info['x'].shape[0] == 3 else 0,
                         'test/o0': info['o'][0],
                         'test/o1': info['o'][1],
                         'test/c_0': info['c'][0],

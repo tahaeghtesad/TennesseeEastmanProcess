@@ -10,11 +10,10 @@ from envs.control.control_env import ControlEnv
 
 class BioReactor(ControlEnv):
 
-    def __init__(self, test_env=False, noise_sigma=0.05, t_epoch=50) -> None:
-        super().__init__(test_env, noise_sigma)
+    def __init__(self, test_env=False, noise_sigma=0.05, t_epoch=200) -> None:
+        super().__init__(test_env, noise_sigma, t_epoch)
         self.logger = logging.getLogger(__class__.__name__)
         self.x = np.array([0., 0.])
-        self.t_epoch = t_epoch
 
         self.action_space = gym.spaces.Box(low=np.array([0.0, 0.0]), high=np.array([3.0, 8.0]))
         self.observation_space = gym.spaces.Box(low=np.array([0.00, 0.00]), high=np.array([10., 10.]))
@@ -49,7 +48,7 @@ class BioReactor(ControlEnv):
             u[0] * (u[1] - self.x[1]) - mu(self.x[1]) / 0.4 * self.x[0]
         ])
 
-        self.x = self.x + dx * 0.1
+        self.x = self.x + dx * .1
         self.x = self.clip(self.x)
 
         win = self.t_epoch == self.step_count
@@ -61,7 +60,7 @@ class BioReactor(ControlEnv):
         if win:
             self.win_count += 1
 
-        return self.x * (1. + np.random.normal(loc=np.zeros(self.action_dim,), scale=np.repeat(self.noise_sigma, self.action_dim))), reward, win, {
+        return self.x * (1. + np.random.normal(loc=np.zeros(self.observation_dim,), scale=np.repeat(self.noise_sigma, self.action_dim))), reward, win, {
             'u': u,
             'x': self.x,
             'dx': dx
@@ -120,7 +119,6 @@ class BioReactorAttacker(gym.Env):  # This is a noise generator attacker.
         return obs, reward, done, info
 
     def reset(self) -> Any:
-        self.adversarial_control_env.defender.reset()
         return self.adversarial_control_env.reset()[0]
 
     def render(self, mode='human') -> None:
@@ -159,7 +157,6 @@ class BioReactorDefender(gym.Env):
         return obs, reward, done, info
 
     def reset(self) -> Any:
-        self.adversarial_control_env.attacker.reset()
         return self.adversarial_control_env.reset()[1]
 
     def render(self, mode='human') -> None:

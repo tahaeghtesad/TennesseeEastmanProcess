@@ -1,20 +1,22 @@
-import gym
-import numpy as np
-from scipy import constants as const
 import logging
-from enum import Enum
 from typing import *
 
+import gym
+import numpy as np
 
-class ThreeTank(gym.Env):
+from agents.RLAgents import Agent, ConstantAgent
+from envs.control.adversarial_control import AdversarialControlEnv
+from envs.control.control_env import ControlEnv
 
-    def __init__(self, noise=True, proximity=0.01) -> None:
-        super().__init__()
-        self.proximity = proximity
+
+class ThreeTank(ControlEnv):
+
+    def __init__(self, test_env=False, noise_sigma=0.05, t_epoch=200) -> None:
+        super().__init__(test_env, noise_sigma, t_epoch)
         self.logger = logging.getLogger(__class__.__name__)
-        self.x = np.array([0., 0., 0.0])
+        self.x = np.array([0., 0., 0.])
 
-        self.action_space = gym.spaces.Box(low=-np.array([0.000075, 0.000075]), high=np.array([0.000075, 0.000075]))
+        self.action_space = gym.spaces.Box(low=np.array([0.0, 0.0]), high=np.array([1.5e-4, 1.5e-4]))
         self.observation_space = gym.spaces.Box(low=-np.array([0, 0]), high=np.array([1., 1.]))
 
         self.tank_size = gym.spaces.Box(low=np.array([0., 0., 0]), high=np.array([.62, .62, .62]))
@@ -25,25 +27,22 @@ class ThreeTank(gym.Env):
         self.highest_reward = -np.inf
 
         self.goal = np.array([.4, .2, .3])
-        self.noise = noise
 
         self.win_count = 0
 
     def q13(self, mu13=0.5, sn=0.00005):
-        return np.sign(self.x[0] - self.x[2]) * np.sqrt(2 * const.g * np.abs(self.x[0] - self.x[2])) * mu13 * sn
+        return np.sign(self.x[0] - self.x[2]) * np.sqrt(2 * 9.8 * np.abs(self.x[0] - self.x[2])) * mu13 * sn
 
     def q32(self, mu32=0.5, sn=0.00005):
-        return np.sign(self.x[2] - self.x[1]) * np.sqrt(2 * const.g * np.abs(self.x[2] - self.x[1])) * mu32 * sn
+        return np.sign(self.x[2] - self.x[1]) * np.sqrt(2 * 9.8 * np.abs(self.x[2] - self.x[1])) * mu32 * sn
 
     def q20(self, mu20=0.6, sn=0.00005):
-        return np.sqrt(2 * const.g * self.x[1]) * mu20 * sn
+        return np.sqrt(2 * 9.8 * self.x[1]) * mu20 * sn
 
     def step(self, action: np.ndarray) -> Tuple[Any, float, bool, Dict]:  # Obs, Reward, Done, Info
         self.step_count += 1
 
-        u = (action + np.array([0.000075, 0.000075])) * \
-            (1. + np.random.normal(loc=np.zeros(2, ), scale=np.array([0.00, 0.07])))\
-            if self.noise else (action + np.array([0.000075, 0.000075]))
+        u = action * (1. + np.random.normal(loc=np.zeros(self.action_dim,), scale=np.repeat(self.noise_sigma, self.action_dim)))
 
         dx = np.array([
             (u[0] - self.q13()) / 0.0154,
@@ -51,10 +50,10 @@ class ThreeTank(gym.Env):
             (self.q13() - self.q32()) / 0.0154
         ])
 
-        self.x = self.x * 1. + dx
+        self.x = self.x + dx * 10.0
         self.x = np.clip(self.x, self.tank_size.low, self.tank_size.high)
 
-        win = False
+        win = self.t_epoch == self.step_count
         reward = -np.linalg.norm(self.x - self.goal)
         # if np.linalg.norm(self.x - self.goal) < self.proximity:
         #     reward += 100
@@ -65,19 +64,23 @@ class ThreeTank(gym.Env):
 
         obs = self.x[:2]
 
-        return np.clip(obs * (1. + np.random.normal(loc=np.zeros(2, ), scale=np.array([0.00, 0.07]))) if self.noise else obs, self.observation_space.low, self.observation_space.high), reward, win, {
-                   'u': u,
-                   'x': self.x,
-                   'dx': dx
-               }
+        return obs * (1. + np.random.normal(loc=np.zeros(self.action_dim,), scale=np.repeat(self.noise_sigma, self.observation_dim))), reward, win, {
+            'u': u,
+            'x': self.x,
+            'dx': dx
+        }
 
     def reset(self) -> Any:
         self.highest_reward = -np.inf
 
         self.episode_count += 1
         self.step_count = 0
-        # self.x = self.tank_size.sample() if np.random.rand() < 0.5 else self.goal.copy()
-        self.x = self.goal.copy()
+
+        if self.test_env:
+            self.x = self.goal.copy()
+        else:
+            self.x = self.goal * (1. + np.random.normal(loc=np.zeros(3, ), scale=np.array([.3, .3, .3])))
+
         self.logger.debug(f'Reset... Starting Point: {self.x}')
         return self.x[:2]
 
@@ -85,98 +88,69 @@ class ThreeTank(gym.Env):
         raise NotImplementedError()
 
 
-class AdversarialThreeTank(gym.Env):
-    def __init__(self, compromise_actuation_prob: float, compromise_observation_prob: float, noise=True) -> None:
-        super().__init__()
+class ThreeTankAttacker(gym.Env):
+
+    def __init__(self, defender: Agent, compromise_actuation_prob: float, compromise_observation_prob: float,
+                 power: float = 0.3, noise_sigma=0.07,
+                 history_length=12, include_compromise=True, test_env=False, t_epoch=50) -> None:
+        self.include_compromise = include_compromise
         self.logger = logging.getLogger(__class__.__name__)
-        self.compromise_actuation_prob = compromise_actuation_prob
-        self.compromise_observation_prob = compromise_observation_prob
 
-        self.compromise_actuation = False
-        self.compromise_observation = False
+        self.adversarial_control_env = AdversarialControlEnv('TT-v0', None, defender, compromise_actuation_prob,
+                                                             compromise_observation_prob, history_length,
+                                                             include_compromise, noise_sigma, t_epoch, power, test_env)
 
-        self.env = gym.make('TT-v0', noise=noise)
+        self.observation_space = gym.spaces.Box(
+            low=np.array([0., 0.] * history_length + [0.] * (self.adversarial_control_env.env.action_dim + self.adversarial_control_env.env.observation_dim)) if self.include_compromise else np.array([0., 0.] * history_length),
+            high=np.array([1., 1.] * history_length + [0.] * (self.adversarial_control_env.env.action_dim + self.adversarial_control_env.env.observation_dim)) if self.include_compromise else np.array([1., 1.] * history_length))
+
+        self.action_space = gym.spaces.Box(
+            low=-power * np.array([1.] * (self.adversarial_control_env.env.action_dim + self.adversarial_control_env.env.observation_dim)),
+            high=power * np.array([1.] * (self.adversarial_control_env.env.action_dim + self.adversarial_control_env.env.observation_dim)))
+
+    def step(self, action: np.ndarray) -> Tuple[Any, float, bool, Dict]:
+        self.adversarial_control_env.set_attacker(ConstantAgent(action))
+        (obs, _), (reward, _), done, info = self.adversarial_control_env.step()
+
+        return obs, reward, done, info
 
     def reset(self) -> Any:
-        obs = self.env.reset()
-        self.compromise_observation = np.random.random() < self.compromise_observation_prob
-        self.compromise_actuation = np.random.random() < self.compromise_actuation_prob
-        self.logger.debug(
-            f'Observation Compromised: {self.compromise_observation} - Actuation Compromised: {self.compromise_actuation}')
+        return self.adversarial_control_env.reset()[0]
 
-        return np.append(obs, np.array([np.float(self.compromise_observation), np.float(self.compromise_actuation)]))
+
+class ThreeTankDefender(gym.Env):
+
+    def __init__(self, attacker: Agent, compromise_actuation_prob: float, compromise_observation_prob: float,
+                 power: float = 0.3, noise_sigma=0.07, test_env=False,
+                 history_length=12, include_compromise=True, t_epoch=50) -> None:
+        self.include_compromise = include_compromise
+        self.logger = logging.getLogger(__class__.__name__)
+
+        self.adversarial_control_env = AdversarialControlEnv('TT-v0', attacker, None, compromise_actuation_prob,
+                                                             compromise_observation_prob, history_length,
+                                                             include_compromise, noise_sigma, t_epoch, power, test_env)
+
+        self.observation_space = gym.spaces.Box(
+            low=np.tile(self.adversarial_control_env.env.observation_space.low, history_length),
+            high=np.tile(self.adversarial_control_env.env.observation_space.high, history_length))
+        if include_compromise:
+            self.observation_space = gym.spaces.Box(
+                low=np.append(self.observation_space.low, np.zeros(
+                    self.adversarial_control_env.env.action_dim + self.adversarial_control_env.env.observation_dim)),
+                high=np.append(self.observation_space.high, np.ones(
+                    self.adversarial_control_env.env.action_dim + self.adversarial_control_env.env.observation_dim)))
+
+        self.action_space = gym.spaces.Box(low=self.adversarial_control_env.env.action_space.low,
+                                           high=self.adversarial_control_env.env.action_space.high)
+
+    def step(self, action: np.ndarray) -> Tuple[Any, float, bool, Dict]:
+        self.adversarial_control_env.set_defender(ConstantAgent(action))
+        (_, obs), (_, reward), done, info = self.adversarial_control_env.step()
+
+        return obs, reward, done, info
+
+    def reset(self) -> Any:
+        return self.adversarial_control_env.reset()[1]
 
     def render(self, mode='human') -> None:
-        raise NotImplementedError()
-
-
-class ThreeTankAttacker(AdversarialThreeTank):
-
-    def __init__(self, defender, compromise_actuation_prob: float, compromise_observation_prob: float,
-                 power: float = 0.3, noise=True) -> None:
-        super().__init__(compromise_actuation_prob, compromise_observation_prob, noise)
-        self.logger = logging.getLogger(__class__.__name__)
-        self.defender = defender
-
-        self.observation_space = gym.spaces.Box(low=np.append(self.env.observation_space.low, [0., 0.]),
-                                                high=np.append(self.env.observation_space.high, [1., 1.]))
-
-        self.action_space = gym.spaces.Box(low=-power * np.array([1.0, 1.0, 1.0, 1.0]),
-                                           high=power * np.array([1.0, 1.0, 1.0, 1.0]))
-
-        self.defender_obs = np.zeros((4,))
-
-    def step(self, action: np.ndarray) -> Tuple[Any, float, bool, Dict]:
-        defender_action = self.defender.predict(self.defender_obs)
-        action_and_noise = defender_action * (1. + action[2:]) if self.compromise_actuation else defender_action
-
-        obs, reward, done, info = self.env.step(action_and_noise)
-        self.defender_obs = np.append(obs[:2] * (1. + action[:2]) if self.compromise_observation else obs[:2], np.array(
-            [np.float(self.compromise_actuation), np.float(self.compromise_observation)]))
-
-        info['a'] = action[2:]
-        info['o'] = action[:2]
-
-        ret = np.append(obs[:2], np.array(
-            [np.float(self.compromise_actuation), np.float(self.compromise_observation)])), -reward, done, info
-        assert ret[0].shape == (4,)
-        return ret
-
-    def reset(self) -> Any:
-        self.defender_obs = super().reset()
-        assert self.defender_obs.shape == (4,)
-        return self.defender_obs
-
-
-class ThreeTankDefender(AdversarialThreeTank):
-
-    def __init__(self, attacker, compromise_actuation_prob: float, compromise_observation_prob: float, power=0.3, noise=True) -> None:
-        super().__init__(compromise_actuation_prob, compromise_observation_prob, noise)
-        self.logger = logging.getLogger(__class__.__name__)
-        self.attacker = attacker
-        self.attacker_obs = np.zeros((4,))
-
-        self.observation_space = gym.spaces.Box(low=np.append(self.env.observation_space.low, [0., 0.]),
-                                                high=np.append(self.env.observation_space.high, [1., 1.]))
-
-        self.action_space = self.env.action_space
-
-    def step(self, action: np.ndarray) -> Tuple[Any, float, bool, Dict]:
-        attacker_action = self.attacker.predict(self.attacker_obs)
-        action_and_noise = action * (1. + attacker_action[2:]) if self.compromise_actuation else action
-
-        obs, reward, done, info = self.env.step(action_and_noise)
-        self.attacker_obs = np.append(obs[:2], np.array(
-            [np.float(self.compromise_actuation), np.float(self.compromise_observation)]))
-
-        info['a'] = attacker_action[2:]
-        info['o'] = attacker_action[:2]
-
-        defender_obs = obs[:2] * (1. + attacker_action[:2]) if self.compromise_observation else obs[:2]
-
-        return np.append(defender_obs[:2], np.array(
-            [np.float(self.compromise_actuation), np.float(self.compromise_observation)])), reward, done, info
-
-    def reset(self) -> Any:
-        self.attacker_obs = super().reset()
-        return self.attacker_obs
+        raise NotImplementedError

@@ -200,16 +200,36 @@ def log_results(attacker_ms, defender_ms, params, trainer, nash_solver, repeat=2
         log=False
     )
 
+    attacker_ms.update_probabilities(attacker_strategy)
+    defender_ms.update_probabilities(defender_strategy)
+    _, du_msne, msne = trainer.get_payoff(attacker_ms,
+                                          defender_ms,
+                                          repeat=repeat,
+                                          compromise=gen_compromise,
+                                          log=False
+                                          )
+
+    _, du_msne_best, msne_best = trainer.get_payoff(attacker_ms.policies[get_best_strategy(attacker_strategy)]
+                                                    ,
+                                                    # msne defender vs best attacker.
+                                                    defender_ms,
+                                                    repeat=repeat,
+                                                    compromise=gen_compromise,
+                                                    log=False
+                                                    )
+
     for step in range(len(no_attack.data)):
         columns = no_attack.columns[1:]
         log = {}
         for i, col in enumerate(columns):
-            if col.startswith('c'): # This is just the compromise vector. It is the same for all envs.
+            if col.startswith('c'):  # This is just the compromise vector. It is the same for all envs.
                 log[f'report/{col}'] = no_attack.data[step][i + 1]
             else:
                 log[f'report/{col}/no_attack'] = no_attack.data[step][i + 1]
                 log[f'report/{col}/defense'] = defense.data[step][i + 1]
                 log[f'report/{col}/no_defense'] = no_defense.data[step][i + 1]
+                log[f'report/{col}/msne'] = msne.data[step][i + 1]
+                log[f'report/{col}/msne_best'] = msne_best.data[step][i + 1]
 
         wandb.log(log)
 
@@ -217,6 +237,10 @@ def log_results(attacker_ms, defender_ms, params, trainer, nash_solver, repeat=2
         'final_payoff/defense': du_d,
         'final_payoff/no_defense': du_nd,
         'final_payoff/no_attack': du_na,
+        'final_payoff/msne_eval': du_msne,
+        'final_payoff/msne_bestatt': msne_best,
+        'final_payoff/msne_table':
+            get_payoff_from_table(nash_solver, trainer.attacker_payoff_table, trainer.defender_payoff_table)[1],
     })
 
 
