@@ -37,8 +37,8 @@ def find_zero_sum_mixed_ne(attacker_payoff, defender_payoff):
 def find_zero_sum_mixed_ne_gambit(attacker_payoff, defender_payoff):
     # assert attacker_payoff.shape == defender_payoff.shape
 
-    g = gambit.Game.from_arrays((attacker_payoff * 10).astype('int').astype(gambit.Decimal),
-                                (defender_payoff * 10).astype('int').astype(gambit.Decimal))
+    g = gambit.Game.from_arrays((attacker_payoff * 100000).astype('int').astype(gambit.Decimal),
+                                (defender_payoff * 100000).astype('int').astype(gambit.Decimal))
     solver = gambit.nash.ExternalLPSolver()
     profile = solver.solve(g)
 
@@ -48,8 +48,8 @@ def find_zero_sum_mixed_ne_gambit(attacker_payoff, defender_payoff):
 def find_general_sum_mixed_ne(attacker_payoff, defender_payoff):
     # assert attacker_payoff.shape == defender_payoff.shape
 
-    g = gambit.Game.from_arrays((attacker_payoff * 10).astype('int').astype(gambit.Decimal),
-                                (defender_payoff * 10).astype('int').astype(gambit.Decimal))
+    g = gambit.Game.from_arrays((attacker_payoff * 100000).astype('int').astype(gambit.Decimal),
+                                (defender_payoff * 100000).astype('int').astype(gambit.Decimal))
     solver = gambit.nash.ExternalGlobalNewtonSolver()
     profile = solver.solve(g)
 
