@@ -14,8 +14,10 @@ import os
 import copy
 import wandb
 
+tmpdir = os.environ['TMPDIR']
 
-def init_logger(prefix, index):
+
+def init_logger(path):
     rootLogger = logging.getLogger()
     rootLogger.setLevel(logging.INFO)
 
@@ -25,45 +27,40 @@ def init_logger(prefix, index):
     consoleHandler.setFormatter(logFormatter)
     rootLogger.addHandler(consoleHandler)
 
-    fileHandler = logging.FileHandler(f'{prefix}/{index}/log.log', mode='w')
+    fileHandler = logging.FileHandler(f'{path}/log.log', mode='w')
     fileHandler.setFormatter(logFormatter)
     rootLogger.addHandler(fileHandler)
     return rootLogger
 
 
-def do_marl(prefix, index, group, params, max_iter, trainer_class, nash_solver):
+def do_marl(group, params, max_iter, trainer_class, nash_solver):
     # index = f'{index}_{str(np.random.randint(0, 1000)).zfill(4)}'
 
-    if not os.path.exists(f'{prefix}'):
-        os.makedirs(f'{prefix}')
-    if not os.path.exists(f'{prefix}/{index}'):
-        os.makedirs(f'{prefix}/{index}')
-        os.makedirs(f'{prefix}/{index}/tb_logs')
-        os.makedirs(f'{prefix}/{index}/params')
+    datadir = f'{tmpdir}/data'
 
-    logger = init_logger(prefix, index)
+    os.makedirs(f'{datadir}')
+    os.makedirs(f'{tmpdir}/tb_logs')
+    os.makedirs(f'{tmpdir}/params')
 
-    logger.info(f'Prefix: {prefix}')
-    logger.info(f'Run ID: {index}')
+    logger = init_logger(f'{tmpdir}/data/')
 
     logger.info('Starting Double Oracle Framework on DO with parameters:')
     logger.info(f'{params}')
 
-    with open(f'{prefix}/{index}/info.json', 'w') as fd:
+    with open(f'{datadir}/info.json', 'w') as fd:
         params_back = copy.deepcopy(params)
         params_back['policy_params']['layers'] = str(params_back['policy_params']['layers'])
         params_back['policy_params']['act_fun'] = params_back['policy_params']['act_fun'].__name__
+        params_back['max_iter'] = max_iter
         json.dump(params_back, fd)
 
-    tmpdir = os.environ['TMPDIR']
-    run = wandb.init(project='tep', config=params_back, dir=f'{tmpdir}/', group=group, reinit=True)
-    run.save(f'{prefix}/{index}/info.json')
-    # run.save(f'{prefix}/{index}/log.log')
-    run.save(f'{prefix}/{index}/params/*')
-    run.save(f'{prefix}/{index}/*.npy')
+    run = wandb.init(project='tep', config=params_back, dir=f'{tmpdir}/wandb/', group=group, reinit=True, settings=wandb.Settings(_disable_stats=True))
+    run.save(f'{datadir}/info.json')
+    run.save(f'{datadir}/params/*')
+    run.save(f'{datadir}/*.npy')
 
     trainer = trainer_class(
-        f'{prefix}/{index}',
+        f'{datadir}',
         **params,
     )
 
@@ -143,14 +140,8 @@ def do_marl(prefix, index, group, params, max_iter, trainer_class, nash_solver):
                    ))})
         logging.info(f'MSNE Attacker vs MSNE Defender Payoff: {au, du}')
 
-    # wandb.run.summary.update({'base_defender_payoff': du})
-
     log_results(attacker_ms, defender_ms, params, trainer, nash_solver)
 
-    # wandb.run.summary['defense'] = defense
-    # wandb.run.summary['no_attack'] = no_attack
-    # wandb.run.summary['no_defense'] = no_defense
-    # wandb.run.summary.update({})
     run.finish(0)
 
 
@@ -248,8 +239,7 @@ def to_bool(input):
 
 
 @click.command(name='mtd')
-@click.option('--prefix', default='runs', help='Prefix folder of run results', show_default=True)
-@click.option('--index', help='Index for this run', required=True)
+@click.option('--group', help='Group of this run', required=True)
 @click.option('--training_params_training_steps', default=500 * 1000,
               help='Number of training steps in each iteration of DO.',
               show_default=True)
@@ -274,7 +264,7 @@ def to_bool(input):
 @click.option('--policy_params_layers', default='64, 64', help='MLP Network Layers', show_default=True)
 @click.option('--policy_params_dueling', default=True, help='Dueling MLP Network', show_default=True)
 @click.option('--policy_params_normalization', default=True, help='Layer Normalization', show_default=True)
-def do_mtd(prefix, index,
+def do_mtd(group,
            training_params_training_steps,
            rl_params_concurrent_runs,
            training_params_tb_logging,
@@ -327,14 +317,14 @@ def do_mtd(prefix, index,
         }
     }
 
-    do_marl(prefix, index, params, max_iter, MTDTrainer, find_general_sum_mixed_ne)
+    group = None if group is None or group == '' else group
+
+    do_marl(group, params, max_iter, MTDTrainer, find_general_sum_mixed_ne)
 
 
 @click.command(name='rc')
 @click.option('--env_id', help='Name of the training environment', required=True)
-@click.option('--prefix', default='runs', help='Prefix folder of run results', show_default=True)
 @click.option('--group', default=None, help='WandB group name', show_default=True)
-@click.option('--index', help='Index for this run', required=True)
 @click.option('--max_iter', default=15, help='Maximum iteration for DO.', show_default=True)
 @click.option('--training_params_training_steps', default=200 * 1000,
               help='Number of training steps in each iteration of DO.',
@@ -418,7 +408,7 @@ def do_rc(env_id,
 
     group = None if group is None or group == '' else group
 
-    do_marl(prefix, index, group, params, max_iter, RCTrainer, find_zero_sum_mixed_ne_gambit)
+    do_marl(group, params, max_iter, RCTrainer, find_zero_sum_mixed_ne_gambit)
 
 
 @click.group(invoke_without_command=True)

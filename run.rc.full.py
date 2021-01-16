@@ -3,7 +3,6 @@ import sys
 
 
 def create_run(
-        index,
         group,
         parallelization,
         env='BRP',
@@ -30,7 +29,6 @@ def create_run(
 ):
     return ['rc',
             '--env_id', env,
-            '--index', f'{index}',
             '--max_iter', f'{max_iter}',
             '--group', group,
             '--training_params_training_steps', f'{training_steps}',
@@ -56,20 +54,23 @@ def create_run(
             ]
 
 
-def generate_runs(repeat, index, parallelization):
+def generate_runs(repeat, parallelization):
     count = 0
 
     runs = []
 
-    runs.append(create_run(
-        index,
-        'do_test',
-        parallelization=parallelization,
-        max_iter=20,
-        epsilon=0.01,
-        noise_sigma=0.0,
-        action_noise_sigma=0.005,
-    ))
+    for _ in range(repeat):
+        runs.append(create_run(
+            group='do_test',
+            parallelization=parallelization,
+            env='TT',
+            noise_sigma=0.0,
+            action_noise_sigma=0.005,
+            test_env=True,
+            epsilon=0.01,
+            max_iter=8,
+        ))
+        count += 1
 
     print(f'Total {count} jobs were created.')
     return runs
@@ -99,15 +100,17 @@ cd /project/laszka/TennesseeEastmanProcess/
 export PATH=$PWD/gambit-project/:$PATH
 
 python run.rc.full.py $SLURM_ARRAY_TASK_ID
+
+mkdir -p /project/laszka/runs/$SLURM_JOB_ID/$SLURM_ARRAY_TASK_ID
+cp -r $TMPDIR/data/* /project/laszka/runs/$SLURM_JOB_ID/$SLURM_ARRAY_TASK_ID/
 ''')
 
 
 if __name__ == '__main__':
-    parallelization = 8
-    start_index = 18000
+    parallelization = 2
     concurrent_runs = 50
     repeat = 10
-    runs = generate_runs(repeat, start_index, parallelization)
+    runs = generate_runs(repeat, parallelization)
     assert len(runs) < 1001, 'Too many runs to schedule'
     if len(sys.argv) == 1:
         target = 'dynamic.full.run.srun.sh'

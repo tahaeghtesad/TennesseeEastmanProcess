@@ -91,7 +91,7 @@ class RCTrainer(Trainer):
 
         attacker_model.learn(
             total_timesteps=self.training_params['training_steps'],
-            callback=self.wandb_callback,
+            # callback=self.wandb_callback,
             tb_log_name=f'attacker_{iteration}'
         )
 
@@ -120,7 +120,7 @@ class RCTrainer(Trainer):
 
         defender_model.learn(
             total_timesteps=self.training_params['training_steps'],
-            callback=self.wandb_callback,
+            # callback=self.wandb_callback,
             tb_log_name=f'defender_{iteration}'
         )
 
@@ -181,28 +181,28 @@ class RCTrainer(Trainer):
                     info['c'][3],
                 )
 
-                if log:
-                    wandb.log({
-                        'test/reward': reward_d,
-                        'test/a0': info['a'][0],
-                        'test/a1': info['a'][1],
-                        'test/d0': info['d'][0],
-                        'test/d1': info['d'][1],
-                        'test/u0': info['u'][0],
-                        'test/u1': info['u'][1],
-                        'test/dx0': info['dx'][0],
-                        'test/dx1': info['dx'][1],
-                        'test/dx2': info['dx'][2] if info['dx'].shape[0] == 3 else 0,
-                        'test/x0': info['x'][0],
-                        'test/x1': info['x'][1],
-                        'test/x2': info['x'][2] if info['x'].shape[0] == 3 else 0,
-                        'test/o0': info['o'][0],
-                        'test/o1': info['o'][1],
-                        'test/c_0': info['c'][0],
-                        'test/c_1': info['c'][1],
-                        'test/c_2': info['c'][2],
-                        'test/c_3': info['c'][3],
-                    })
+                # if log:
+                #     wandb.log({
+                #         'test/reward': reward_d,
+                #         'test/a0': info['a'][0],
+                #         'test/a1': info['a'][1],
+                #         'test/d0': info['d'][0],
+                #         'test/d1': info['d'][1],
+                #         'test/u0': info['u'][0],
+                #         'test/u1': info['u'][1],
+                #         'test/dx0': info['dx'][0],
+                #         'test/dx1': info['dx'][1],
+                #         'test/dx2': info['dx'][2] if info['dx'].shape[0] == 3 else 0,
+                #         'test/x0': info['x'][0],
+                #         'test/x1': info['x'][1],
+                #         'test/x2': info['x'][2] if info['x'].shape[0] == 3 else 0,
+                #         'test/o0': info['o'][0],
+                #         'test/o1': info['o'][1],
+                #         'test/c_0': info['c'][0],
+                #         'test/c_1': info['c'][1],
+                #         'test/c_2': info['c'][2],
+                #         'test/c_3': info['c'][3],
+                #     })
 
                 total_steps += 1
 
