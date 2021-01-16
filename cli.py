@@ -350,8 +350,6 @@ def do_mtd(group,
 @click.option('--policy_params_activation', default='tanh', help='Activation Function', show_default=True)
 @click.option('--policy_params_layers', default='32, 32', help='MLP Network Layers', show_default=True)
 def do_rc(env_id,
-          prefix,
-          index,
           group,
           max_iter,
           training_params_training_steps,
