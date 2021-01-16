@@ -59,42 +59,6 @@ class SimpleWrapperAgent(Agent):
         return self.agent.save(save_path, cloudpickle)
 
 
-class HistoryAgent(SimpleWrapperAgent):
-
-    def __init__(self, agent: [Agent], observation_dim=2, history_length=12) -> None:
-        super().__init__(agent)
-        self.history_length = history_length
-        self.observation_dim = observation_dim
-        self.agent = agent
-        self.history = []
-        self.compromise = None
-
-    def add_history(self, observation):
-        self.history.append(observation)
-        if len(self.history) == 1:
-            self.history = [observation] * self.history_length
-        if len(self.history) > self.history_length:
-            del self.history[0]
-
-    def reset(self):
-        self.history = []
-
-    def predict(self, observation, state=None, mask=None, deterministic=True):
-        self.add_history(observation)
-        return self.agent.predict(np.array(self.history).flatten(), state, mask, deterministic)[0]
-
-
-class LimitedHistoryAgent(HistoryAgent):
-
-    def __init__(self, agent: [Agent], observation_dim=2, history_length=12, select=None) -> None:
-        super().__init__(agent, observation_dim, history_length)
-        self.select = [0, 4, 11] if select is None else select
-
-    def predict(self, observation, state=None, mask=None, deterministic=True):
-        self.add_history(observation)
-        return self.agent.predict(np.array(self.history)[self.select].flatten(), state, mask, deterministic)[0]
-
-
 class ConstantAgent(Agent):
 
     def __init__(self, action) -> None:

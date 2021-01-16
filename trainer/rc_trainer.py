@@ -128,7 +128,7 @@ class RCTrainer(Trainer):
 
         return SimpleWrapperAgent(defender_model)
 
-    def get_payoff(self, attacker: Agent, defender: Agent, repeat=50, compromise=None, log=True):
+    def get_payoff(self, attacker: Agent, defender: Agent, repeat=64, compromise=None, log=True):
 
         params = copy.deepcopy(self.env_params)
         params.update({

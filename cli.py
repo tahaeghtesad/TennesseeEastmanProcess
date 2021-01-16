@@ -4,6 +4,8 @@ import sys
 import click
 import numpy as np
 
+from agents.RLAgents import ConstantAgent, ZeroAgent
+from envs.control.heuristics.attackers import AlternatingAttacker
 from trainer import MTDTrainer, RCTrainer
 import tensorflow as tf
 from util.nash_helpers import find_general_sum_mixed_ne, find_zero_sum_mixed_ne_gambit, get_payoff_from_table
@@ -55,10 +57,10 @@ def do_marl(prefix, index, group, params, max_iter, trainer_class, nash_solver):
 
     tmpdir = os.environ['TMPDIR']
     run = wandb.init(project='tep', config=params_back, dir=f'{tmpdir}/', group=group, reinit=True)
-    # run.save(f'{prefix}/{index}/info.json')
+    run.save(f'{prefix}/{index}/info.json')
     # run.save(f'{prefix}/{index}/log.log')
-    # run.save(f'{prefix}/{index}/params/*')
-    # run.save(f'{prefix}/{index}/*.npy')
+    run.save(f'{prefix}/{index}/params/*')
+    run.save(f'{prefix}/{index}/*.npy')
 
     trainer = trainer_class(
         f'{prefix}/{index}',
@@ -163,7 +165,7 @@ def get_best_strategy(strategy):
     return sort_list[0]
 
 
-def log_results(attacker_ms, defender_ms, params, trainer, nash_solver, repeat=20):
+def log_results(attacker_ms, defender_ms, params, trainer, nash_solver, repeat=64):
     compromise_list = {}
 
     def gen_compromise(step):
@@ -176,69 +178,64 @@ def log_results(attacker_ms, defender_ms, params, trainer, nash_solver, repeat=2
 
     attacker_strategy, defender_strategy = nash_solver(trainer.attacker_payoff_table,
                                                        trainer.defender_payoff_table)
-    _, du_na, no_attack = trainer.get_payoff(
-        attacker_ms.policies[0],
-        defender_ms.policies[0],
-        repeat=repeat,
-        compromise=gen_compromise,
-        log=False
-    )
 
-    _, du_nd, no_defense = trainer.get_payoff(
-        attacker_ms.policies[get_best_strategy(attacker_strategy)],
-        defender_ms.policies[0],
-        repeat=repeat,
-        compromise=gen_compromise,
-        log=False
-    )
-
-    _, du_d, defense = trainer.get_payoff(
-        attacker_ms.policies[get_best_strategy(attacker_strategy)],
-        defender_ms.policies[get_best_strategy(defender_strategy)],
-        repeat=repeat,
-        compromise=gen_compromise,
-        log=False
-    )
+    ## defender utility from msne_attacker vs. base defender > msne_defender vs. base attacker.
 
     attacker_ms.update_probabilities(attacker_strategy)
     defender_ms.update_probabilities(defender_strategy)
-    _, du_msne, msne = trainer.get_payoff(attacker_ms,
-                                          defender_ms,
-                                          repeat=repeat,
-                                          compromise=gen_compromise,
-                                          log=False
-                                          )
 
-    _, du_msne_best, msne_best = trainer.get_payoff(attacker_ms.policies[get_best_strategy(attacker_strategy)]
-                                                    ,
-                                                    # msne defender vs best attacker.
-                                                    defender_ms,
-                                                    repeat=repeat,
-                                                    compromise=gen_compromise,
-                                                    log=False
-                                                    )
+    _, du_na, no_attack = trainer.get_payoff(  # No Attack system operation
+        ZeroAgent(4),
+        defender_ms,
+        repeat=repeat,
+        compromise=gen_compromise,
+        log=False
+    )
+
+    _, du_msne, msne = trainer.get_payoff(  # What would defense look like!
+        attacker_ms,
+        defender_ms,
+        repeat=repeat,
+        compromise=gen_compromise,
+        log=False
+    )
+
+    _, du_nd, no_defense = trainer.get_payoff(  # What would happen if we just had the first RL.
+        attacker_ms,
+        defender_ms.policies[0],
+        repeat=repeat,
+        compromise=gen_compromise,
+        log=False
+    )
+
+    _, du_alternating, alternating = trainer.get_payoff(
+        AlternatingAttacker(4),
+        defender_ms,
+        repeat=repeat,
+        compromise=gen_compromise,
+        log=False
+    )
 
     for step in range(len(no_attack.data)):
         columns = no_attack.columns[1:]
         log = {}
         for i, col in enumerate(columns):
             if col.startswith('c'):  # This is just the compromise vector. It is the same for all envs.
+                assert no_attack.data[step][i + 1] == no_defense.data[step][i + 1] == msne.data[step][i + 1]
                 log[f'report/{col}'] = no_attack.data[step][i + 1]
             else:
                 log[f'report/{col}/no_attack'] = no_attack.data[step][i + 1]
-                log[f'report/{col}/defense'] = defense.data[step][i + 1]
                 log[f'report/{col}/no_defense'] = no_defense.data[step][i + 1]
                 log[f'report/{col}/msne'] = msne.data[step][i + 1]
-                log[f'report/{col}/msne_best'] = msne_best.data[step][i + 1]
+                log[f'report/{col}/alternating'] = alternating.data[step][i+1]
 
         wandb.log(log)
 
     wandb.run.summary.update({
-        'final_payoff/defense': du_d,
         'final_payoff/no_defense': du_nd,
         'final_payoff/no_attack': du_na,
         'final_payoff/msne_eval': du_msne,
-        'final_payoff/msne_bestatt': msne_best,
+        'final_payoff/alternating': du_alternating,
         'final_payoff/msne_table':
             get_payoff_from_table(nash_solver, trainer.attacker_payoff_table, trainer.defender_payoff_table)[1],
     })
