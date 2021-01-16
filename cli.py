@@ -39,10 +39,10 @@ def do_marl(group, params, max_iter, trainer_class, nash_solver):
     datadir = f'{tmpdir}/data'
 
     os.makedirs(f'{datadir}')
-    os.makedirs(f'{tmpdir}/tb_logs')
-    os.makedirs(f'{tmpdir}/params')
+    os.makedirs(f'{datadir}/tb_logs')
+    os.makedirs(f'{datadir}/params')
 
-    logger = init_logger(f'{tmpdir}/data/')
+    logger = init_logger(f'{datadir}')
 
     logger.info('Starting Double Oracle Framework on DO with parameters:')
     logger.info(f'{params}')
