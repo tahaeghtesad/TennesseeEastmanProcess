@@ -101,8 +101,8 @@ export PATH=$PWD/gambit-project/:$PATH
 
 python run.rc.full.py $SLURM_ARRAY_TASK_ID
 
-mkdir -p /project/laszka/runs/$SLURM_JOB_ID/$SLURM_ARRAY_TASK_ID
-cp -r $TMPDIR/data/* /project/laszka/runs/$SLURM_JOB_ID/$SLURM_ARRAY_TASK_ID/
+mkdir -p runs/$SLURM_JOB_ID/$SLURM_ARRAY_TASK_ID
+cp -r $TMPDIR/data/* runs/$SLURM_JOB_ID/$SLURM_ARRAY_TASK_ID/
 ''')
 
 
