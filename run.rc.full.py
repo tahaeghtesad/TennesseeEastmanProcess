@@ -59,18 +59,95 @@ def generate_runs(repeat, parallelization):
 
     runs = []
 
-    for _ in range(repeat):
-        runs.append(create_run(
-            group='do_test',
-            parallelization=parallelization,
-            env='TT',
-            noise_sigma=0.0,
-            action_noise_sigma=0.005,
-            test_env=True,
-            epsilon=0.01,
-            max_iter=8,
-        ))
-        count += 1
+    # Full DO Baseline
+    for env in ['BRP', 'TT']:
+        for _ in range(repeat):
+            runs.append(create_run(
+                group='do_baseline',
+                parallelization=parallelization,
+                env=env,
+                noise_sigma=0.0,
+                action_noise_sigma=0.005,
+                test_env=True,
+                epsilon=0.01,
+                max_iter=8,
+            ))
+            count += 1
+
+        for ca in [0.5, 1.0]:
+            for _ in range(repeat):
+                runs.append(create_run(
+                    group='do_actuation',
+                    parallelization=parallelization,
+                    env=env,
+                    noise_sigma=0.0,
+                    action_noise_sigma=0.005,
+                    test_env=True,
+                    epsilon=0.01,
+                    max_iter=8,
+                    compromise_actuation_prob=ca,
+                    compromise_observation_prob=0.0,
+                ))
+                count += 1
+
+        for co in [0.5, 1.0]:
+            for _ in range(repeat):
+                runs.append(create_run(
+                    group='do_observation',
+                    parallelization=parallelization,
+                    env=env,
+                    noise_sigma=0.0,
+                    action_noise_sigma=0.005,
+                    test_env=True,
+                    epsilon=0.01,
+                    max_iter=8,
+                    compromise_observation_prob=co,
+                    compromise_actuation_prob=0.0,
+                ))
+                count += 1
+
+        for p in [0.3, 0.5, 0.75, 1]:
+            for _ in range(repeat):
+                runs.append(create_run(
+                    group='do_power',
+                    parallelization=parallelization,
+                    env=env,
+                    noise_sigma=0.0,
+                    action_noise_sigma=0.005,
+                    test_env=True,
+                    epsilon=0.01,
+                    max_iter=8,
+                    power=p
+                ))
+                count += 1
+
+        for ss in [True, False]:
+            for _ in range(repeat):
+                runs.append(create_run(
+                    group='do_start_set',
+                    parallelization=parallelization,
+                    env=env,
+                    noise_sigma=0.0,
+                    action_noise_sigma=0.005,
+                    test_env=ss,
+                    epsilon=0.01,
+                    max_iter=8
+                ))
+                count += 1
+
+        for en in [0.0005, 0.005, 0.05, 0.5]:
+            for _ in range(repeat):
+                runs.append(create_run(
+                    group='do_env_noise',
+                    parallelization=parallelization,
+                    env=env,
+                    noise_sigma=en,
+                    action_noise_sigma=0.005,
+                    test_env=ss,
+                    epsilon=0.01,
+                    max_iter=8
+                ))
+                count += 1
 
     print(f'Total {count} jobs were created.')
     return runs
@@ -107,9 +184,9 @@ cp -r $TMPDIR/data/* runs/$SLURM_JOB_ID/$SLURM_ARRAY_TASK_ID/
 
 
 if __name__ == '__main__':
-    parallelization = 2
+    parallelization = 1
     concurrent_runs = 50
-    repeat = 10
+    repeat = 6
     runs = generate_runs(repeat, parallelization)
     assert len(runs) < 1001, 'Too many runs to schedule'
     if len(sys.argv) == 1:
