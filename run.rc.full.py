@@ -63,16 +63,30 @@ def generate_runs(repeat, parallelization):
     for env in ['BRP', 'TT']:
         for _ in range(repeat):
             runs.append(create_run(
-                group='do_baseline_random_start',
+                group='do_no_memory',
                 parallelization=parallelization,
                 env=env,
                 noise_sigma=0.0,
                 action_noise_sigma=0.005,
-                test_env=False,
+                test_env=True,
                 epsilon=0.01,
                 max_iter=8,
+                history_length=1
             ))
             count += 1
+
+        # for _ in range(repeat):
+        #     runs.append(create_run(
+        #         group='do_baseline_random_start',
+        #         parallelization=parallelization,
+        #         env=env,
+        #         noise_sigma=0.0,
+        #         action_noise_sigma=0.005,
+        #         test_env=False,
+        #         epsilon=0.01,
+        #         max_iter=8,
+        #     ))
+        #     count += 1
         #
         # for ca in [0.5, 1.0]:
         #     for _ in range(repeat):
@@ -120,34 +134,34 @@ def generate_runs(repeat, parallelization):
         #             power=p
         #         ))
         #         count += 1
-
-        for ss in [True, False]:
-            for _ in range(repeat):
-                runs.append(create_run(
-                    group='do_start_set',
-                    parallelization=parallelization,
-                    env=env,
-                    noise_sigma=0.0,
-                    action_noise_sigma=0.005,
-                    test_env=ss,
-                    epsilon=0.01,
-                    max_iter=8
-                ))
-                count += 1
-
-        for en in [0.0005, 0.005, 0.05, 0.5]:
-            for _ in range(repeat):
-                runs.append(create_run(
-                    group='do_env_noise',
-                    parallelization=parallelization,
-                    env=env,
-                    noise_sigma=en,
-                    action_noise_sigma=0.005,
-                    test_env=True,
-                    epsilon=0.01,
-                    max_iter=8
-                ))
-                count += 1
+        #
+        # for ss in [True, False]:
+        #     for _ in range(repeat):
+        #         runs.append(create_run(
+        #             group='do_start_set',
+        #             parallelization=parallelization,
+        #             env=env,
+        #             noise_sigma=0.0,
+        #             action_noise_sigma=0.005,
+        #             test_env=ss,
+        #             epsilon=0.01,
+        #             max_iter=8
+        #         ))
+        #         count += 1
+        #
+        # for en in [0.0005, 0.005, 0.05, 0.5]:
+        #     for _ in range(repeat):
+        #         runs.append(create_run(
+        #             group='do_env_noise',
+        #             parallelization=parallelization,
+        #             env=env,
+        #             noise_sigma=en,
+        #             action_noise_sigma=0.005,
+        #             test_env=True,
+        #             epsilon=0.01,
+        #             max_iter=8
+        #         ))
+        #         count += 1
 
     print(f'Total {count} jobs were created.')
     return runs
