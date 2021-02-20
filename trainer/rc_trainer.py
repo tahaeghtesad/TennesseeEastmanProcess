@@ -139,8 +139,8 @@ class RCTrainer(Trainer):
 
         env = AdversarialControlEnv(f'{self.env_id}-v0', attacker, defender, **params)
 
-        ra = 0
-        rd = 0
+        ra = []
+        rd = []
         total_steps = 0
 
         columns = ['reward', 'x_0', 'x_1', 'x_2', 'a_0', 'a_1', 'd_0', 'd_1', 'u_0', 'u_1', 'dx_0', 'dx_1', 'dx_2', 'o_0', 'o_1', 'c_0', 'c_1', 'c_2', 'c_3']
@@ -154,8 +154,8 @@ class RCTrainer(Trainer):
             while not done:
                 (att_obs, def_obs), (reward_a, reward_d), done, info = env.step()
 
-                ra += reward_a * .9 ** iter ## Evaluation Gamma should Always be the same
-                rd += reward_d * .9 ** iter
+                ra.append(reward_a)
+                rd.append(reward_d)
                 iter += 1
 
                 report_table.add_data(
@@ -210,7 +210,7 @@ class RCTrainer(Trainer):
         # for column in columns:
         #     log[column] = wandb.plot.line(report_table, 'step', column)
 
-        return ra / repeat, rd / repeat, report_table
+        return sum(ra)/len(ra), sum(rd)/len(rd), report_table
 
     def initialize_strategies(self):
         attacker = ZeroAgent(4)  # TODO this should not be a constant 4
