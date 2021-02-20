@@ -207,20 +207,36 @@ def log_results(attacker_ms, defender_ms, params, trainer, nash_solver, repeat=6
         log=False
     )
 
-    for step in range(len(no_attack.data)):
-        columns = no_attack.columns[1:]
-        log = {}
-        for i, col in enumerate(columns):
-            if col.startswith('c'):  # This is just the compromise vector. It is the same for all envs.
-                assert no_attack.data[step][i + 1] == no_defense.data[step][i + 1] == msne.data[step][i + 1]
-                log[f'report/{col}'] = no_attack.data[step][i + 1]
-            else:
-                log[f'report/{col}/no_attack'] = no_attack.data[step][i + 1]
-                log[f'report/{col}/no_defense'] = no_defense.data[step][i + 1]
-                log[f'report/{col}/msne'] = msne.data[step][i + 1]
-                log[f'report/{col}/alternating'] = alternating.data[step][i+1]
+    _, du_msne_br, msne_br = trainer.get_payoff(
+        attacker_ms.policies[1] if len(attacker_ms.policies) > 1 else attacker_ms,
+        defender_ms,
+        repeat=repeat,
+        compromise=gen_compromise,
+        log=False
+    )
 
-        wandb.log(log)
+    _, du_base_br, base_br = trainer.get_payoff(
+        attacker_ms.policies[1] if len(attacker_ms.policies) > 1 else attacker_ms,
+        defender_ms.policies[0],
+        repeat=repeat,
+        compromise=gen_compromise,
+        log=False
+    )
+
+    # for step in range(len(no_attack.data)):
+    #     columns = no_attack.columns[1:]
+    #     log = {}
+    #     for i, col in enumerate(columns):
+    #         if col.startswith('c'):  # This is just the compromise vector. It is the same for all envs.
+    #             assert no_attack.data[step][i + 1] == no_defense.data[step][i + 1] == msne.data[step][i + 1]
+    #             log[f'report/{col}'] = no_attack.data[step][i + 1]
+    #         else:
+    #             log[f'report/{col}/no_attack'] = no_attack.data[step][i + 1]
+    #             log[f'report/{col}/no_defense'] = no_defense.data[step][i + 1]
+    #             log[f'report/{col}/msne'] = msne.data[step][i + 1]
+    #             log[f'report/{col}/alternating'] = alternating.data[step][i+1]
+    #
+    #     wandb.log(log)
 
     wandb.run.summary.update({
         'final_payoff/no_defense': du_nd,
@@ -229,6 +245,8 @@ def log_results(attacker_ms, defender_ms, params, trainer, nash_solver, repeat=6
         'final_payoff/alternating': du_alternating,
         'final_payoff/msne_table':
             get_payoff_from_table(nash_solver, trainer.attacker_payoff_table, trainer.defender_payoff_table)[1],
+        'final_payoff/msne_br': du_msne_br,
+        'final_payoff/base_br': du_base_br
     })
 
 
