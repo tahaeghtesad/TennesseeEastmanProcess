@@ -33,7 +33,7 @@ def init_logger(path):
     return rootLogger
 
 
-def do_marl(group, params, max_iter, trainer_class, nash_solver):
+def do_marl(group, sabine_id, params, max_iter, trainer_class, nash_solver):
     # index = f'{index}_{str(np.random.randint(0, 1000)).zfill(4)}'
 
     datadir = f'{tmpdir}/data'
@@ -52,6 +52,7 @@ def do_marl(group, params, max_iter, trainer_class, nash_solver):
         params_back['policy_params']['layers'] = str(params_back['policy_params']['layers'])
         params_back['policy_params']['act_fun'] = params_back['policy_params']['act_fun'].__name__
         params_back['max_iter'] = max_iter
+        params_back['sabine_id'] = sabine_id
         json.dump(params_back, fd)
 
     run = wandb.init(project='tep', config=params_back, dir=f'{tmpdir}/wandb/', group=group, reinit=True, settings=wandb.Settings(_disable_stats=True))
@@ -261,6 +262,7 @@ def to_bool(input):
 @click.option('--training_params_training_steps', default=500 * 1000,
               help='Number of training steps in each iteration of DO.',
               show_default=True)
+@click.option('--sabine_id', help='Run ID in Sabine')
 @click.option('--training_params_tb_logging', default=True, help='Whether to store Tensorboard logs', show_default=True)
 @click.option('--max_iter', default=15, help='Maximum iteration for DO.', show_default=True)
 @click.option('--training_params_include_heuristics', default=True, help='Whether to include the heuristics',
@@ -283,6 +285,7 @@ def to_bool(input):
 @click.option('--policy_params_dueling', default=True, help='Dueling MLP Network', show_default=True)
 @click.option('--policy_params_normalization', default=True, help='Layer Normalization', show_default=True)
 def do_mtd(group,
+           sabine_id,
            training_params_training_steps,
            rl_params_concurrent_runs,
            training_params_tb_logging,
@@ -337,12 +340,13 @@ def do_mtd(group,
 
     group = None if group is None or group == '' else group
 
-    do_marl(group, params, max_iter, MTDTrainer, find_general_sum_mixed_ne)
+    do_marl(group, sabine_id, params, max_iter, MTDTrainer, find_general_sum_mixed_ne)
 
 
 @click.command(name='rc')
 @click.option('--env_id', help='Name of the training environment', required=True)
 @click.option('--group', default=None, help='WandB group name', show_default=True)
+@click.option('--sabine_id', help='Run ID in Sabine')
 @click.option('--max_iter', default=15, help='Maximum iteration for DO.', show_default=True)
 @click.option('--training_params_training_steps', default=200 * 1000,
               help='Number of training steps in each iteration of DO.',
@@ -368,6 +372,7 @@ def do_mtd(group,
 @click.option('--policy_params_activation', default='tanh', help='Activation Function', show_default=True)
 @click.option('--policy_params_layers', default='32, 32', help='MLP Network Layers', show_default=True)
 def do_rc(env_id,
+          sabine_id,
           group,
           max_iter,
           training_params_training_steps,
@@ -424,7 +429,7 @@ def do_rc(env_id,
 
     group = None if group is None or group == '' else group
 
-    do_marl(group, params, max_iter, RCTrainer, find_zero_sum_mixed_ne_gambit)
+    do_marl(group, sabine_id, params, max_iter, RCTrainer, find_zero_sum_mixed_ne_gambit)
 
 
 @click.group(invoke_without_command=True)

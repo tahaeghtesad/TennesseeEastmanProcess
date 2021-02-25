@@ -59,7 +59,7 @@ def generate_runs(repeat, parallelization):
 
     runs = []
     
-    for env in ['BRP', 'TT']:
+    for env in ['TT']:
 
         ## Baseline
         for r in range(repeat):
@@ -186,10 +186,10 @@ conda activate tep-cpu
 cd /project/laszka/TennesseeEastmanProcess/
 export PATH=$PWD/gambit-project/:$PATH
 
-python run.rc.py $SLURM_ARRAY_TASK_ID
+python run.rc.py $SLURM_ARRAY_TASK_ID $SLURM_JOB_ID
 
-mkdir -p runs/$SLURM_JOB_ID/$SLURM_ARRAY_TASK_ID
-cp -r $TMPDIR/data/* runs/$SLURM_JOB_ID/$SLURM_ARRAY_TASK_ID/
+mkdir -p runs/$SLURM_JOB_ID
+cp -r $TMPDIR/data/* runs/$SLURM_JOB_ID/
 ''')
 
 
@@ -204,7 +204,8 @@ if __name__ == '__main__':
         write_config(target, default_conf, runs, parallelization, concurrent_runs)
         print(f'running {["sbatch", target]}')
         subprocess.run(['sbatch', target])
-    if len(sys.argv) == 2:
+    if len(sys.argv) == 3:
         run_conf = int(sys.argv[1])
-        print(f"running {['python', 'cli.py'] + runs[run_conf - 1]}")
-        subprocess.run(['python', 'cli.py'] + runs[run_conf - 1])
+        sabine_id = int(sys.argv[2])
+        print(f"running {['python', 'cli.py'] + runs[run_conf - 1] + ['--sabine_id', sabine_id]}")
+        subprocess.run(['python', 'cli.py'] + runs[run_conf - 1] + ['--sabine_id', sabine_id])
