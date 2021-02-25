@@ -8,7 +8,8 @@ from agents.RLAgents import ConstantAgent, ZeroAgent
 from envs.control.heuristics.attackers import AlternatingAttacker
 from trainer import MTDTrainer, RCTrainer
 import tensorflow as tf
-from util.nash_helpers import find_general_sum_mixed_ne, find_zero_sum_mixed_ne_gambit, get_payoff_from_table
+from util.nash_helpers import find_general_sum_mixed_ne, get_payoff_from_table, \
+    find_zero_sum_mixed_ne
 import json
 import os
 import copy
@@ -429,7 +430,7 @@ def do_rc(env_id,
 
     group = None if group is None or group == '' else group
 
-    do_marl(group, sabine_id, params, max_iter, RCTrainer, find_zero_sum_mixed_ne_gambit)
+    do_marl(group, sabine_id, params, max_iter, RCTrainer, find_zero_sum_mixed_ne)
 
 
 @click.group(invoke_without_command=True)
