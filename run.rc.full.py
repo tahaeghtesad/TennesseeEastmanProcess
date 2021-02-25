@@ -226,5 +226,5 @@ if __name__ == '__main__':
     if len(sys.argv) == 3:
         run_conf = int(sys.argv[1])
         sabine_id = int(sys.argv[2])
-        print(f"running {['python', 'cli.py'] + runs[run_conf - 1] + ['--sabine_id', sabine_id]}")
-        subprocess.run(['python', 'cli.py'] + runs[run_conf - 1] + ['--sabine_id', sabine_id])
+        print(f"running {['python', 'cli.py'] + runs[run_conf - 1] + ['--sabine_id', f'{sabine_id}']}")
+        subprocess.run(['python', 'cli.py'] + runs[run_conf - 1] + ['--sabine_id', f'{sabine_id}'])
