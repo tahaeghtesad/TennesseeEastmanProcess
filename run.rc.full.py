@@ -68,7 +68,7 @@ def generate_runs(repeat, parallelization):
                 env=env,
                 noise_sigma=0.05,
                 action_noise_sigma=0.005,
-                test_env=True,
+                test_env=False,
                 epsilon=0.01,
                 max_iter=8,
                 history_length=8

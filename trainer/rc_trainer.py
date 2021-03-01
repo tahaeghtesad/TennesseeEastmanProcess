@@ -134,7 +134,7 @@ class RCTrainer(Trainer):
         params.update({
             't_epoch': 200,
             # 'noise_sigma': 0.00,
-            'test_env': True,
+            # 'test_env': True,
         })
 
         env = AdversarialControlEnv(f'{self.env_id}-v0', attacker, defender, **params)
