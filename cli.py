@@ -96,7 +96,10 @@ def do_marl(group, sabine_id, params, max_iter, trainer_class, nash_solver):
         logger.info(f'Training Attacker {attacker_iteration}')
         attacker_strategy, defender_strategy = nash_solver(trainer.attacker_payoff_table,
                                                            trainer.defender_payoff_table)
-        logger.info('\n' + tabulate(trainer.defender_payoff_table, tablefmt='grid', floatfmt='.4f'))
+        logger.info('\n' + tabulate(np.vstack([defender_strategy.reshape((1, defender_strategy.size)), trainer.defender_payoff_table]),
+                       tablefmt='grid',
+                       floatfmt='.4f',
+                       showindex=np.insert(attacker_strategy, 0, np.nan)))
         logging.info(f'Defender MSNE: {defender_strategy}')
         defender_ms.update_probabilities(defender_strategy)
         attacker_policy = trainer.train_attacker(defender_ms, attacker_iteration)
@@ -122,7 +125,11 @@ def do_marl(group, sabine_id, params, max_iter, trainer_class, nash_solver):
         logger.info(f'Training Defender {defender_iteration}')
         attacker_strategy, defender_strategy = nash_solver(trainer.attacker_payoff_table,
                                                            trainer.defender_payoff_table)
-        logger.info('\n' + tabulate(trainer.defender_payoff_table, tablefmt='grid', floatfmt='.4f'))
+        logger.info('\n' + tabulate(
+            np.vstack([defender_strategy.reshape((1, defender_strategy.size)), trainer.defender_payoff_table]),
+            tablefmt='grid',
+            floatfmt='.4f',
+            showindex=np.insert(attacker_strategy, 0, np.nan)))
         logging.info(f'Attacker MSNE: {attacker_strategy}')
         attacker_ms.update_probabilities(attacker_strategy)
         defender_policy = trainer.train_defender(attacker_ms, defender_iteration)
