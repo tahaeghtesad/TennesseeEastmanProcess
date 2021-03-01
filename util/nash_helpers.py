@@ -32,7 +32,7 @@ def find_zero_sum_mixed_ne(attacker_payoff, defender_payoff):
 
         return res_attacker.x[0:n]
 
-    return solve_lp(-defender_payoff.transpose()), solve_lp(defender_payoff)
+    return solve_lp(defender_payoff.transpose()), solve_lp(attacker_payoff)
 
 def find_zero_sum_mixed_ne_gambit(attacker_payoff, defender_payoff):
     # assert attacker_payoff.shape == defender_payoff.shape
