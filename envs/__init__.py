@@ -1,6 +1,7 @@
 from gym.envs.registration import register
 import envs.control
 import envs.mtd
+import envs.pong
 
 register(
     id='Historitized-v0',
