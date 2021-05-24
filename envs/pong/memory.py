@@ -1,4 +1,5 @@
 import gym
+import numpy as np
 
 
 class MemoryEnv(gym.Env):
@@ -13,7 +14,8 @@ class MemoryEnv(gym.Env):
         self.memory = []
 
         self.action_space = self.env.action_space
-        self.observation_space = gym.spaces.Box(0, 255, (self.memory_size, ) + self.env.observation_space.shape)
+        #self.observation_space = gym.spaces.Box(0, 255, (self.memory_size, ) + self.env.observation_space.shape)
+        self.observation_space = gym.spaces.Box(0, 255, (4, 84, 84))
 
     def step(self, action):
 
@@ -23,12 +25,12 @@ class MemoryEnv(gym.Env):
         if len(self.memory) > self.memory_size:
             del self.memory[0]
 
-        return self.memory, reward, done, info
+        return np.array(self.memory).reshape((4, 84, 84)), reward, done, info
 
     def reset(self):
         obs = self.env.reset()
         self.memory = [obs] * self.memory_size
-        return self.memory
+        return np.array(self.memory).reshape((4, 84, 84))
 
     def render(self, mode='human'):
         return self.env.render(mode)

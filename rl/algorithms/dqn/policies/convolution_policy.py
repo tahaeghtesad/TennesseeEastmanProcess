@@ -25,7 +25,7 @@ class ConvolutionalPolicy:
         model = Sequential()
         model.add(Input((env.observation_space.shape)))
         for _ in range(conv_count):
-            model.add(Conv2D(filters=4, kernel_size=(3, 3), strides=1, data_format="channels_last", activation=activation,
+            model.add(Conv2D(filters=4, kernel_size=(3, 3), strides=1, data_format="channels_first", activation=activation,
                              kernel_initializer=tf.keras.initializers.VarianceScaling(scale=2)))
         model.add(Flatten())
         for n in dens_arch:
