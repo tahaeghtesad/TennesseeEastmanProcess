@@ -37,7 +37,7 @@ class ThreeTank(ControlEnv):
         return np.sign(self.x[2] - self.x[1]) * np.sqrt(2 * 9.8 * np.abs(self.x[2] - self.x[1])) * mu32 * sn
 
     def q20(self, mu20=0.6, sn=0.00005):
-        return np.sqrt(2 * 9.8 * self.x[1]) * mu20 * sn
+        return np.sqrt(2 * 9.8 * (self.x[1] if self.x[1] >= 0 else 0)) * mu20 * sn
 
     def step(self, action: np.ndarray) -> Tuple[Any, float, bool, Dict]:  # Obs, Reward, Done, Info
         self.step_count += 1

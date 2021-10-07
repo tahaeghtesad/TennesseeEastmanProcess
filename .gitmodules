@@ -4,3 +4,9 @@
 [submodule "stable-baselines"]
 	path = stable-baselines
 	url = https://github.com/tahaeghtesad/stable-baselines
+[submodule "safety-gym"]
+	path = safety-gym
+	url = https://github.com/openai/safety-gym
+[submodule "patchelf"]
+	path = patchelf
+	url = https://github.com/NixOS/patchelf

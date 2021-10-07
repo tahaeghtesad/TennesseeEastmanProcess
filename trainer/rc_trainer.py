@@ -91,7 +91,7 @@ class RCTrainer(Trainer):
 
         attacker_model.learn(
             total_timesteps=self.training_params['training_steps'],
-            callback=self.wandb_callback,
+            # callback=self.wandb_callback,
             tb_log_name=f'attacker_{iteration}'
         )
 
@@ -120,7 +120,7 @@ class RCTrainer(Trainer):
 
         defender_model.learn(
             total_timesteps=self.training_params['training_steps'],
-            callback=self.wandb_callback,
+            # callback=self.wandb_callback,
             tb_log_name=f'defender_{iteration}'
         )
 
@@ -134,13 +134,13 @@ class RCTrainer(Trainer):
         params.update({
             't_epoch': 200,
             # 'noise_sigma': 0.00,
-            'test_env': True,
+            # 'test_env': True,
         })
 
         env = AdversarialControlEnv(f'{self.env_id}-v0', attacker, defender, **params)
 
-        ra = 0
-        rd = 0
+        ra = []
+        rd = []
         total_steps = 0
 
         columns = ['reward', 'x_0', 'x_1', 'x_2', 'a_0', 'a_1', 'd_0', 'd_1', 'u_0', 'u_1', 'dx_0', 'dx_1', 'dx_2', 'o_0', 'o_1', 'c_0', 'c_1', 'c_2', 'c_3']
@@ -154,8 +154,8 @@ class RCTrainer(Trainer):
             while not done:
                 (att_obs, def_obs), (reward_a, reward_d), done, info = env.step()
 
-                ra += reward_a * .9 ** iter ## Evaluation Gamma should Always be the same
-                rd += reward_d * .9 ** iter
+                ra.append(reward_a)
+                rd.append(reward_d)
                 iter += 1
 
                 report_table.add_data(
@@ -181,28 +181,28 @@ class RCTrainer(Trainer):
                     info['c'][3],
                 )
 
-                if log:
-                    wandb.log({
-                        'test/reward': reward_d,
-                        'test/a0': info['a'][0],
-                        'test/a1': info['a'][1],
-                        'test/d0': info['d'][0],
-                        'test/d1': info['d'][1],
-                        'test/u0': info['u'][0],
-                        'test/u1': info['u'][1],
-                        'test/dx0': info['dx'][0],
-                        'test/dx1': info['dx'][1],
-                        'test/dx2': info['dx'][2] if info['dx'].shape[0] == 3 else 0,
-                        'test/x0': info['x'][0],
-                        'test/x1': info['x'][1],
-                        'test/x2': info['x'][2] if info['x'].shape[0] == 3 else 0,
-                        'test/o0': info['o'][0],
-                        'test/o1': info['o'][1],
-                        'test/c_0': info['c'][0],
-                        'test/c_1': info['c'][1],
-                        'test/c_2': info['c'][2],
-                        'test/c_3': info['c'][3],
-                    })
+                # if log:
+                #     wandb.log({
+                #         'test/reward': reward_d,
+                #         'test/a0': info['a'][0],
+                #         'test/a1': info['a'][1],
+                #         'test/d0': info['d'][0],
+                #         'test/d1': info['d'][1],
+                #         'test/u0': info['u'][0],
+                #         'test/u1': info['u'][1],
+                #         'test/dx0': info['dx'][0],
+                #         'test/dx1': info['dx'][1],
+                #         'test/dx2': info['dx'][2] if info['dx'].shape[0] == 3 else 0,
+                #         'test/x0': info['x'][0],
+                #         'test/x1': info['x'][1],
+                #         'test/x2': info['x'][2] if info['x'].shape[0] == 3 else 0,
+                #         'test/o0': info['o'][0],
+                #         'test/o1': info['o'][1],
+                #         'test/c_0': info['c'][0],
+                #         'test/c_1': info['c'][1],
+                #         'test/c_2': info['c'][2],
+                #         'test/c_3': info['c'][3],
+                #     })
 
                 total_steps += 1
 
@@ -210,7 +210,7 @@ class RCTrainer(Trainer):
         # for column in columns:
         #     log[column] = wandb.plot.line(report_table, 'step', column)
 
-        return ra / repeat, rd / repeat, report_table
+        return sum(ra)/len(ra), sum(rd)/len(rd), report_table
 
     def initialize_strategies(self):
         attacker = ZeroAgent(4)  # TODO this should not be a constant 4

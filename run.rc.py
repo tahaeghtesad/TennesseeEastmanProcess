@@ -3,7 +3,6 @@ import sys
 
 
 def create_run(
-        index,
         group,
         parallelization,
         env='BRP',
@@ -30,7 +29,6 @@ def create_run(
 ):
     return ['rc',
             '--env_id', env,
-            '--index', f'{index}',
             '--max_iter', f'{max_iter}',
             '--group', group,
             '--training_params_training_steps', f'{training_steps}',
@@ -56,120 +54,110 @@ def create_run(
             ]
 
 
-def generate_runs(repeat, index, parallelization):
+def generate_runs(repeat, parallelization):
     count = 0
 
     runs = []
+    
+    for env in ['TT']:
 
-    ## Baseline
-    for r in range(repeat):
-        runs.append(create_run(
-            index, 'baseline', parallelization=parallelization
-        ))
-        index += 1
-        count += 1
-
-    ## Changing The Agent Conf
-
-    # Epsilon
-    for e in [0.0, 0.01, 0.05, 0.1, 0.2]:
+        ## Baseline
         for r in range(repeat):
             runs.append(create_run(
-                index, 'epsilon', epsilon=e, parallelization=parallelization
+                'baseline', env=env, parallelization=parallelization
             ))
-            index += 1
             count += 1
-
-    # Gamma
-    for g in [0.99, 0.9, 0.5, 0.1]:
+    
+        ## Changing The Agent Conf
+    
+        # Epsilon
+        for e in [0.0, 0.01, 0.05, 0.1, 0.2]:
+            for r in range(repeat):
+                runs.append(create_run(
+                    'epsilon', epsilon=e, env=env, parallelization=parallelization
+                ))
+                count += 1
+    
+        # Gamma
+        for g in [0.99, 0.9, 0.5, 0.1]:
+            for r in range(repeat):
+                runs.append(create_run(
+                    'gamma', gamma=g, env=env, parallelization=parallelization
+                ))
+                count += 1
+    
+        # act_fun
+        for a in ['tanh', 'sigmoid', 'relu', 'elu']:
+            for r in range(repeat):
+                runs.append(create_run(
+                    'act_fun', act_fun=a, env=env, parallelization=parallelization
+                ))
+                count += 1
+    
+        # layers
+        for l in ['25, 25, 25, 25, 25', '25, 25, 25', '25, 25', '128, 64', '128, 64, 32']:
+            for r in range(repeat):
+                runs.append(create_run(
+                    'layers', layers=l, env=env, parallelization=parallelization
+                ))
+                count += 1
+    
+        # action noise
+        for an in [0.01, 0.05, 0.1, 0.5]:
+            for r in range(repeat):
+                runs.append(create_run(
+                    'action_noise', action_noise_sigma=an, env=env, parallelization=parallelization
+                ))
+                count += 1
+    
+        # buffer size
+        for b in [500, 1000, 5000, 10000, 50000]:
+            for r in range(repeat):
+                runs.append(create_run(
+                    'buffer_size', buffer_size=b, env=env, parallelization=parallelization
+                ))
+                count += 1
+    
+        # batch size
+        for s in [16, 32, 64, 128, 256, 512]:
+            for r in range(repeat):
+                runs.append(create_run(
+                    'batch_size', batch_size=s, env=env, parallelization=parallelization
+                ))
+                count += 1
+    
+        ## Changing Env configuration
+    
+        # t_epoch
+        for te in [5, 10, 50, 100, 200, 300, 400, 500]:
+            for r in range(repeat):
+                runs.append(create_run(
+                    't_epoch', t_epoch=te, env=env, parallelization=parallelization
+                ))
+                count += 1
+    
+        # noise sigma
+        for ns in [0.0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5]:
+            for r in range(repeat):
+                runs.append(create_run(
+                    'env_noise', noise_sigma=ns, env=env, parallelization=parallelization
+                ))
+                count += 1
+    
+        # history_length
+        for hl in [1, 2, 4, 8, 16, 32, 64]:
+            for r in range(repeat):
+                runs.append(create_run(
+                    'history_length', history_length=hl, env=env, parallelization=parallelization
+                ))
+                count += 1
+    
+        # start from set
         for r in range(repeat):
             runs.append(create_run(
-                index, 'gamma', gamma=g, parallelization=parallelization
+                'start_set', test_env=True, env=env, parallelization=parallelization
             ))
-            index += 1
             count += 1
-
-    # act_fun
-    for a in ['tanh', 'sigmoid', 'relu', 'elu']:
-        for r in range(repeat):
-            runs.append(create_run(
-                index, 'act_fun', act_fun=a, parallelization=parallelization
-            ))
-            index += 1
-            count += 1
-
-    # layers
-    for l in ['25, 25, 25, 25, 25', '25, 25, 25', '25, 25', '128, 64', '128, 64, 32']:
-        for r in range(repeat):
-            runs.append(create_run(
-                index, 'layers', layers=l, parallelization=parallelization
-            ))
-            index += 1
-            count += 1
-
-    # action noise
-    for an in [0.01, 0.05, 0.1, 0.5]:
-        for r in range(repeat):
-            runs.append(create_run(
-                index, 'action_noise', action_noise_sigma=an, parallelization=parallelization
-            ))
-            index += 1
-            count += 1
-
-    # buffer size
-    for b in [500, 1000, 5000, 10000, 50000]:
-        for r in range(repeat):
-            runs.append(create_run(
-                index, 'buffer_size', buffer_size=b, parallelization=parallelization
-            ))
-            index += 1
-            count += 1
-
-    # batch size
-    for s in [16, 32, 64, 128, 256, 512]:
-        for r in range(repeat):
-            runs.append(create_run(
-                index, 'batch_size', batch_size=s, parallelization=parallelization
-            ))
-            index += 1
-            count += 1
-
-    ## Changing Env configuration
-
-    # t_epoch
-    for te in [5, 10, 50, 100, 200, 300, 400, 500]:
-        for r in range(repeat):
-            runs.append(create_run(
-                index, 't_epoch', t_epoch=te, parallelization=parallelization
-            ))
-            index += 1
-            count += 1
-
-    # noise sigma
-    for ns in [0.0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5]:
-        for r in range(repeat):
-            runs.append(create_run(
-                index, 'env_noise', noise_sigma=ns, parallelization=parallelization
-            ))
-            index += 1
-            count += 1
-
-    # history_length
-    for hl in [1, 2, 4, 8, 16, 32, 64]:
-        for r in range(repeat):
-            runs.append(create_run(
-                index, 'history_length', history_length=hl, parallelization=parallelization
-            ))
-            index += 1
-            count += 1
-
-    # start from set
-    for r in range(repeat):
-        runs.append(create_run(
-            index, 'start_set', test_env=True, parallelization=parallelization
-        ))
-        index += 1
-        count += 1
 
     print(f'Total {count} jobs were created.')
     return runs
@@ -198,23 +186,26 @@ conda activate tep-cpu
 cd /project/laszka/TennesseeEastmanProcess/
 export PATH=$PWD/gambit-project/:$PATH
 
-python run.rc.py $SLURM_ARRAY_TASK_ID
+python run.rc.py $SLURM_ARRAY_TASK_ID $SLURM_JOB_ID
+
+mkdir -p runs/$SLURM_JOB_ID
+cp -r $TMPDIR/data/* runs/$SLURM_JOB_ID/
 ''')
 
 
 if __name__ == '__main__':
     parallelization = 2
-    start_index = 13000
-    concurrent_runs = 350
+    concurrent_runs = 100
     repeat = 10
-    runs = generate_runs(repeat, start_index, parallelization)
+    runs = generate_runs(repeat, parallelization)
     assert len(runs) < 1001, 'Too many runs to schedule'
     if len(sys.argv) == 1:
         target = 'dynamic.run.srun.sh'
         write_config(target, default_conf, runs, parallelization, concurrent_runs)
         print(f'running {["sbatch", target]}')
         subprocess.run(['sbatch', target])
-    if len(sys.argv) == 2:
+    if len(sys.argv) == 3:
         run_conf = int(sys.argv[1])
-        print(f"running {['python', 'cli.py'] + runs[run_conf - 1]}")
-        subprocess.run(['python', 'cli.py'] + runs[run_conf - 1])
+        sabine_id = int(sys.argv[2])
+        print(f"running {['python', 'cli.py'] + runs[run_conf - 1] + ['--sabine_id', f'{sabine_id}']}")
+        subprocess.run(['python', 'cli.py'] + runs[run_conf - 1] + ['--sabine_id', f'{sabine_id}'])
