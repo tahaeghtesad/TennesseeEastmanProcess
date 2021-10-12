@@ -3,7 +3,6 @@ import sys
 
 
 def create_run(
-        index,
         group,
         parallelization,
         env='BRP',
@@ -30,7 +29,6 @@ def create_run(
 ):
     return ['rc',
             '--env_id', env,
-            '--index', f'{index}',
             '--max_iter', f'{max_iter}',
             '--group', group,
             '--training_params_training_steps', f'{training_steps}',
@@ -56,20 +54,129 @@ def create_run(
             ]
 
 
-def generate_runs(repeat, index, parallelization):
+def generate_runs(repeat, parallelization):
     count = 0
 
     runs = []
 
-    runs.append(create_run(
-        index,
-        'do_test',
-        parallelization=parallelization,
-        max_iter=20,
-        epsilon=0.01,
-        noise_sigma=0.0,
-        action_noise_sigma=0.005,
-    ))
+    for env in ['BRP', 'TT']:
+
+        for _ in range(repeat):
+            runs.append(create_run(
+                group='do_baseline',
+                parallelization=parallelization,
+                env=env,
+                noise_sigma=0.05,
+                action_noise_sigma=0.005,
+                test_env=False,
+                epsilon=0.01,
+                max_iter=8,
+                history_length=8
+            ))
+            count += 1
+
+        for _ in range(repeat):
+            for hl in [1, 2, 4, 8, 16]:
+                runs.append(create_run(
+                    group='do_memory',
+                    parallelization=parallelization,
+                    env=env,
+                    noise_sigma=0.05,
+                    action_noise_sigma=0.005,
+                    test_env=False,
+                    epsilon=0.01,
+                    max_iter=8,
+                    history_length=hl
+                ))
+                count += 1
+
+        for _ in range(repeat):
+            runs.append(create_run(
+                group='do_baseline_random_start',
+                parallelization=parallelization,
+                env=env,
+                noise_sigma=0.05,
+                action_noise_sigma=0.005,
+                test_env=False,
+                epsilon=0.01,
+                max_iter=8,
+            ))
+            count += 1
+
+        for ca in [0.2, 0.4, 0.8, 1.0]:
+            for _ in range(repeat):
+                runs.append(create_run(
+                    group='do_actuation_only',
+                    parallelization=parallelization,
+                    env=env,
+                    noise_sigma=0.0,
+                    action_noise_sigma=0.005,
+                    test_env=False,
+                    epsilon=0.01,
+                    max_iter=8,
+                    compromise_actuation_prob=ca,
+                    compromise_observation_prob=0.0,
+                ))
+                count += 1
+
+        for co in [0.2, 0.4, 0.8, 1.0]:
+            for _ in range(repeat):
+                runs.append(create_run(
+                    group='do_observation_only',
+                    parallelization=parallelization,
+                    env=env,
+                    noise_sigma=0.0,
+                    action_noise_sigma=0.005,
+                    test_env=False,
+                    epsilon=0.01,
+                    max_iter=8,
+                    compromise_observation_prob=co,
+                    compromise_actuation_prob=0.0,
+                ))
+                count += 1
+
+        for p in [0.1, 0.3, 0.5, 0.75, 1]:
+            for _ in range(repeat):
+                runs.append(create_run(
+                    group='do_power',
+                    parallelization=parallelization,
+                    env=env,
+                    noise_sigma=0.05,
+                    action_noise_sigma=0.005,
+                    test_env=False,
+                    epsilon=0.01,
+                    max_iter=8,
+                    power=p
+                ))
+                count += 1
+
+        for ss in [True]:
+            for _ in range(repeat):
+                runs.append(create_run(
+                    group='do_start_set',
+                    parallelization=parallelization,
+                    env=env,
+                    noise_sigma=0.05,
+                    action_noise_sigma=0.005,
+                    test_env=ss,
+                    epsilon=0.01,
+                    max_iter=8
+                ))
+                count += 1
+
+        for en in [0.0005, 0.005, 0.05, 0.5]:
+            for _ in range(repeat):
+                runs.append(create_run(
+                    group='do_env_noise',
+                    parallelization=parallelization,
+                    env=env,
+                    noise_sigma=en,
+                    action_noise_sigma=0.005,
+                    test_env=False,
+                    epsilon=0.01,
+                    max_iter=8
+                ))
+                count += 1
 
     print(f'Total {count} jobs were created.')
     return runs
@@ -98,23 +205,26 @@ conda activate tep-cpu
 cd /project/laszka/TennesseeEastmanProcess/
 export PATH=$PWD/gambit-project/:$PATH
 
-python run.rc.full.py $SLURM_ARRAY_TASK_ID
+python run.rc.full.py $SLURM_ARRAY_TASK_ID $SLURM_JOB_ID
+
+mkdir -p runs/$SLURM_JOB_ID
+cp -r $TMPDIR/data/* runs/$SLURM_JOB_ID/
 ''')
 
 
 if __name__ == '__main__':
-    parallelization = 8
-    start_index = 18000
+    parallelization = 1
     concurrent_runs = 50
-    repeat = 10
-    runs = generate_runs(repeat, start_index, parallelization)
+    repeat = 6
+    runs = generate_runs(repeat, parallelization)
     assert len(runs) < 1001, 'Too many runs to schedule'
     if len(sys.argv) == 1:
         target = 'dynamic.full.run.srun.sh'
         write_config(target, default_conf, runs, parallelization, concurrent_runs)
         print(f'running {["sbatch", target]}')
         subprocess.run(['sbatch', target])
-    if len(sys.argv) == 2:
+    if len(sys.argv) == 3:
         run_conf = int(sys.argv[1])
-        print(f"running {['python', 'cli.py'] + runs[run_conf - 1]}")
-        subprocess.run(['python', 'cli.py'] + runs[run_conf - 1])
+        sabine_id = int(sys.argv[2])
+        print(f"running {['python', 'cli.py'] + runs[run_conf - 1] + ['--sabine_id', f'{sabine_id}']}")
+        subprocess.run(['python', 'cli.py'] + runs[run_conf - 1] + ['--sabine_id', f'{sabine_id}'])

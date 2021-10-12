@@ -4,18 +4,21 @@ import sys
 import click
 import numpy as np
 
-from agents.RLAgents import ConstantAgent, ZeroAgent
+from agents.RLAgents import ZeroAgent
 from envs.control.heuristics.attackers import AlternatingAttacker
 from trainer import MTDTrainer, RCTrainer
 import tensorflow as tf
-from util.nash_helpers import find_general_sum_mixed_ne, find_zero_sum_mixed_ne_gambit, get_payoff_from_table
+from util.nash_helpers import find_general_sum_mixed_ne, get_payoff_from_table, \
+    find_zero_sum_mixed_ne
 import json
 import os
 import copy
 import wandb
+from tabulate import tabulate
+tmpdir = os.environ['TMPDIR']
 
 
-def init_logger(prefix, index):
+def init_logger(path):
     rootLogger = logging.getLogger()
     rootLogger.setLevel(logging.INFO)
 
@@ -25,45 +28,41 @@ def init_logger(prefix, index):
     consoleHandler.setFormatter(logFormatter)
     rootLogger.addHandler(consoleHandler)
 
-    fileHandler = logging.FileHandler(f'{prefix}/{index}/log.log', mode='w')
+    fileHandler = logging.FileHandler(f'{path}/log.log', mode='w')
     fileHandler.setFormatter(logFormatter)
     rootLogger.addHandler(fileHandler)
     return rootLogger
 
 
-def do_marl(prefix, index, group, params, max_iter, trainer_class, nash_solver):
+def do_marl(group, sabine_id, params, max_iter, trainer_class, nash_solver):
     # index = f'{index}_{str(np.random.randint(0, 1000)).zfill(4)}'
 
-    if not os.path.exists(f'{prefix}'):
-        os.makedirs(f'{prefix}')
-    if not os.path.exists(f'{prefix}/{index}'):
-        os.makedirs(f'{prefix}/{index}')
-        os.makedirs(f'{prefix}/{index}/tb_logs')
-        os.makedirs(f'{prefix}/{index}/params')
+    datadir = f'{tmpdir}/data'
 
-    logger = init_logger(prefix, index)
+    os.makedirs(f'{datadir}')
+    os.makedirs(f'{datadir}/tb_logs')
+    os.makedirs(f'{datadir}/params')
 
-    logger.info(f'Prefix: {prefix}')
-    logger.info(f'Run ID: {index}')
+    logger = init_logger(f'{datadir}')
 
     logger.info('Starting Double Oracle Framework on DO with parameters:')
     logger.info(f'{params}')
 
-    with open(f'{prefix}/{index}/info.json', 'w') as fd:
+    with open(f'{datadir}/info.json', 'w') as fd:
         params_back = copy.deepcopy(params)
         params_back['policy_params']['layers'] = str(params_back['policy_params']['layers'])
         params_back['policy_params']['act_fun'] = params_back['policy_params']['act_fun'].__name__
+        params_back['max_iter'] = max_iter
+        params_back['sabine_id'] = sabine_id
         json.dump(params_back, fd)
 
-    tmpdir = os.environ['TMPDIR']
-    run = wandb.init(project='tep', config=params_back, dir=f'{tmpdir}/', group=group, reinit=True)
-    run.save(f'{prefix}/{index}/info.json')
-    # run.save(f'{prefix}/{index}/log.log')
-    run.save(f'{prefix}/{index}/params/*')
-    run.save(f'{prefix}/{index}/*.npy')
+    run = wandb.init(project='tep', config=params_back, dir=f'{tmpdir}/wandb/', group=group, reinit=True, settings=wandb.Settings(_disable_stats=True))
+    run.save(f'{datadir}/info.json')
+    run.save(f'{datadir}/params/*')
+    run.save(f'{datadir}/*.npy')
 
     trainer = trainer_class(
-        f'{prefix}/{index}',
+        f'{datadir}',
         **params,
     )
 
@@ -97,6 +96,10 @@ def do_marl(prefix, index, group, params, max_iter, trainer_class, nash_solver):
         logger.info(f'Training Attacker {attacker_iteration}')
         attacker_strategy, defender_strategy = nash_solver(trainer.attacker_payoff_table,
                                                            trainer.defender_payoff_table)
+        logger.info('\n' + tabulate(np.vstack([defender_strategy.reshape((1, defender_strategy.size)), trainer.defender_payoff_table]),
+                       tablefmt='grid',
+                       floatfmt='.4f',
+                       showindex=np.insert(attacker_strategy, 0, np.nan)))
         logging.info(f'Defender MSNE: {defender_strategy}')
         defender_ms.update_probabilities(defender_strategy)
         attacker_policy = trainer.train_attacker(defender_ms, attacker_iteration)
@@ -122,6 +125,11 @@ def do_marl(prefix, index, group, params, max_iter, trainer_class, nash_solver):
         logger.info(f'Training Defender {defender_iteration}')
         attacker_strategy, defender_strategy = nash_solver(trainer.attacker_payoff_table,
                                                            trainer.defender_payoff_table)
+        logger.info('\n' + tabulate(
+            np.vstack([defender_strategy.reshape((1, defender_strategy.size)), trainer.defender_payoff_table]),
+            tablefmt='grid',
+            floatfmt='.4f',
+            showindex=np.insert(attacker_strategy, 0, np.nan)))
         logging.info(f'Attacker MSNE: {attacker_strategy}')
         attacker_ms.update_probabilities(attacker_strategy)
         defender_policy = trainer.train_defender(attacker_ms, defender_iteration)
@@ -143,14 +151,8 @@ def do_marl(prefix, index, group, params, max_iter, trainer_class, nash_solver):
                    ))})
         logging.info(f'MSNE Attacker vs MSNE Defender Payoff: {au, du}')
 
-    # wandb.run.summary.update({'base_defender_payoff': du})
-
     log_results(attacker_ms, defender_ms, params, trainer, nash_solver)
 
-    # wandb.run.summary['defense'] = defense
-    # wandb.run.summary['no_attack'] = no_attack
-    # wandb.run.summary['no_defense'] = no_defense
-    # wandb.run.summary.update({})
     run.finish(0)
 
 
@@ -216,20 +218,36 @@ def log_results(attacker_ms, defender_ms, params, trainer, nash_solver, repeat=6
         log=False
     )
 
-    for step in range(len(no_attack.data)):
-        columns = no_attack.columns[1:]
-        log = {}
-        for i, col in enumerate(columns):
-            if col.startswith('c'):  # This is just the compromise vector. It is the same for all envs.
-                assert no_attack.data[step][i + 1] == no_defense.data[step][i + 1] == msne.data[step][i + 1]
-                log[f'report/{col}'] = no_attack.data[step][i + 1]
-            else:
-                log[f'report/{col}/no_attack'] = no_attack.data[step][i + 1]
-                log[f'report/{col}/no_defense'] = no_defense.data[step][i + 1]
-                log[f'report/{col}/msne'] = msne.data[step][i + 1]
-                log[f'report/{col}/alternating'] = alternating.data[step][i+1]
+    _, du_msne_br, msne_br = trainer.get_payoff(
+        attacker_ms.policies[1] if len(attacker_ms.policies) > 1 else attacker_ms,
+        defender_ms,
+        repeat=repeat,
+        compromise=gen_compromise,
+        log=False
+    )
 
-        wandb.log(log)
+    _, du_base_br, base_br = trainer.get_payoff(
+        attacker_ms.policies[1] if len(attacker_ms.policies) > 1 else attacker_ms,
+        defender_ms.policies[0],
+        repeat=repeat,
+        compromise=gen_compromise,
+        log=False
+    )
+
+    # for step in range(len(no_attack.data)):
+    #     columns = no_attack.columns[1:]
+    #     log = {}
+    #     for i, col in enumerate(columns):
+    #         if col.startswith('c'):  # This is just the compromise vector. It is the same for all envs.
+    #             assert no_attack.data[step][i + 1] == no_defense.data[step][i + 1] == msne.data[step][i + 1]
+    #             log[f'report/{col}'] = no_attack.data[step][i + 1]
+    #         else:
+    #             log[f'report/{col}/no_attack'] = no_attack.data[step][i + 1]
+    #             log[f'report/{col}/no_defense'] = no_defense.data[step][i + 1]
+    #             log[f'report/{col}/msne'] = msne.data[step][i + 1]
+    #             log[f'report/{col}/alternating'] = alternating.data[step][i+1]
+    #
+    #     wandb.log(log)
 
     wandb.run.summary.update({
         'final_payoff/no_defense': du_nd,
@@ -238,6 +256,8 @@ def log_results(attacker_ms, defender_ms, params, trainer, nash_solver, repeat=6
         'final_payoff/alternating': du_alternating,
         'final_payoff/msne_table':
             get_payoff_from_table(nash_solver, trainer.attacker_payoff_table, trainer.defender_payoff_table)[1],
+        'final_payoff/msne_br': du_msne_br,
+        'final_payoff/base_br': du_base_br
     })
 
 
@@ -248,11 +268,11 @@ def to_bool(input):
 
 
 @click.command(name='mtd')
-@click.option('--prefix', default='runs', help='Prefix folder of run results', show_default=True)
-@click.option('--index', help='Index for this run', required=True)
+@click.option('--group', help='Group of this run', required=True)
 @click.option('--training_params_training_steps', default=500 * 1000,
               help='Number of training steps in each iteration of DO.',
               show_default=True)
+@click.option('--sabine_id', help='Run ID in Sabine')
 @click.option('--training_params_tb_logging', default=True, help='Whether to store Tensorboard logs', show_default=True)
 @click.option('--max_iter', default=15, help='Maximum iteration for DO.', show_default=True)
 @click.option('--training_params_include_heuristics', default=True, help='Whether to include the heuristics',
@@ -274,7 +294,8 @@ def to_bool(input):
 @click.option('--policy_params_layers', default='64, 64', help='MLP Network Layers', show_default=True)
 @click.option('--policy_params_dueling', default=True, help='Dueling MLP Network', show_default=True)
 @click.option('--policy_params_normalization', default=True, help='Layer Normalization', show_default=True)
-def do_mtd(prefix, index,
+def do_mtd(group,
+           sabine_id,
            training_params_training_steps,
            rl_params_concurrent_runs,
            training_params_tb_logging,
@@ -327,14 +348,15 @@ def do_mtd(prefix, index,
         }
     }
 
-    do_marl(prefix, index, params, max_iter, MTDTrainer, find_general_sum_mixed_ne)
+    group = None if group is None or group == '' else group
+
+    do_marl(group, sabine_id, params, max_iter, MTDTrainer, find_general_sum_mixed_ne)
 
 
 @click.command(name='rc')
 @click.option('--env_id', help='Name of the training environment', required=True)
-@click.option('--prefix', default='runs', help='Prefix folder of run results', show_default=True)
 @click.option('--group', default=None, help='WandB group name', show_default=True)
-@click.option('--index', help='Index for this run', required=True)
+@click.option('--sabine_id', help='Run ID in Sabine')
 @click.option('--max_iter', default=15, help='Maximum iteration for DO.', show_default=True)
 @click.option('--training_params_training_steps', default=200 * 1000,
               help='Number of training steps in each iteration of DO.',
@@ -360,8 +382,7 @@ def do_mtd(prefix, index,
 @click.option('--policy_params_activation', default='tanh', help='Activation Function', show_default=True)
 @click.option('--policy_params_layers', default='32, 32', help='MLP Network Layers', show_default=True)
 def do_rc(env_id,
-          prefix,
-          index,
+          sabine_id,
           group,
           max_iter,
           training_params_training_steps,
@@ -418,7 +439,7 @@ def do_rc(env_id,
 
     group = None if group is None or group == '' else group
 
-    do_marl(prefix, index, group, params, max_iter, RCTrainer, find_zero_sum_mixed_ne_gambit)
+    do_marl(group, sabine_id, params, max_iter, RCTrainer, find_zero_sum_mixed_ne)
 
 
 @click.group(invoke_without_command=True)
