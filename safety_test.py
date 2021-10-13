@@ -18,8 +18,8 @@ env = gym.make(f'Safexp-{robot}Goal0-v0')
 
 attacker_model = PPO2(
             policy=get_policy_class(dict(
-                net_arch=dict(vf=[128, 64],
-                              pi=[64, 64]),
+                net_arch=[dict(vf=[128, 64],
+                               pi=[64, 64])],
                 act_fun=tf.nn.tanh
             )),
             env=env,
