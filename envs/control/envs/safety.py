@@ -16,6 +16,7 @@ class SafetyEnvAttacker(gym.Env):
         self.adversarial_control_env = SafetyThreatModel(env, attacker=None, defender=defender)
         self.observation_space = gym.spaces.Box(low=np.hstack((self.adversarial_control_env.env.action_space.low, self.adversarial_control_env.env.observation_space.low)),
                                                 high=np.hstack((self.adversarial_control_env.env.action_space.high, self.adversarial_control_env.env.observation_space.high)))
+        self.action_space = self.adversarial_control_env.env.action_space
 
         self.defender_obs = np.zeros((4,))
 
