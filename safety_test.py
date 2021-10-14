@@ -48,8 +48,8 @@ def eval_agents(env, attacker, defender):
 robot = 'Car'
 env_name = f'Safexp-{robot}Goal0-v0'
 base_model_path = 'lee-models'
-repeat = 5
-train_length = 400_000
+repeat = 1
+train_length = 1_000
 
 if __name__ == '__main__':
     if not os.path.isdir(base_model_path):
@@ -69,7 +69,7 @@ if __name__ == '__main__':
             )),
             env=SafetyEnvDefender(env_name, ZeroAgent(2)),
             gamma=0.995,
-            verbose=1,
+            verbose=0,
             lam=0.97,
             tensorboard_log='tb_logs/',
             full_tensorboard_log=True
@@ -82,7 +82,7 @@ if __name__ == '__main__':
         )
         nominal_model.save(f'{base_model_path}/nominal_{i}')
         agented_model = SimpleWrapperAgent(nominal_model)
-        agent_reward = eval_agents(env_name, ZeroAgent(2), nominal_model)[1]
+        agent_reward = eval_agents(env_name, ZeroAgent(2), agented_model)[1]
         nominal_models.append(agented_model)
         nominal_average_rewards.append(agent_reward)
         print(f'Nominal/{i} - reward: {agent_reward:.2f}')
@@ -102,7 +102,7 @@ if __name__ == '__main__':
             )),
             env=SafetyEnvAttacker(env_name, best_nominal),
             gamma=0.995,
-            verbose=1,
+            verbose=0,
             lam=0.97,
             tensorboard_log='tb_logs/',
             full_tensorboard_log=True
@@ -136,7 +136,7 @@ if __name__ == '__main__':
             )),
             env=SafetyEnvDefender(env_name, best_att1),
             gamma=0.995,
-            verbose=1,
+            verbose=0,
             lam=0.97,
             tensorboard_log='tb_logs/',
             full_tensorboard_log=True
@@ -169,7 +169,7 @@ if __name__ == '__main__':
             )),
             env=SafetyEnvAttacker(env_name, best_robust),
             gamma=0.995,
-            verbose=1,
+            verbose=0,
             lam=0.97,
             tensorboard_log='tb_logs/',
             full_tensorboard_log=True
