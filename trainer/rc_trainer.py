@@ -9,7 +9,7 @@ from stable_baselines.common.noise import NormalActionNoise
 from stable_baselines.ddpg import LnMlpPolicy
 
 from agents.RLAgents import Agent, SimpleWrapperAgent, SinglePolicyMixedStrategyAgent, ZeroAgent
-from envs.control.adversarial_control import AdversarialControlEnv
+from envs.control.threat.tep_threat import TEPThreatModel
 from envs.control.envs import BioReactorDefender, BioReactorAttacker, ThreeTankDefender, ThreeTankAttacker
 from trainer.trainer import Trainer
 
@@ -137,7 +137,7 @@ class RCTrainer(Trainer):
             # 'test_env': True,
         })
 
-        env = AdversarialControlEnv(f'{self.env_id}-v0', attacker, defender, **params)
+        env = TEPThreatModel(f'{self.env_id}-v0', attacker, defender, **params)
 
         ra = []
         rd = []

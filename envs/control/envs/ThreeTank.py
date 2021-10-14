@@ -5,7 +5,7 @@ import gym
 import numpy as np
 
 from agents.RLAgents import Agent, ConstantAgent
-from envs.control.adversarial_control import AdversarialControlEnv
+from envs.control.threat.tep_threat import TEPThreatModel
 from envs.control.control_env import ControlEnv
 
 
@@ -96,9 +96,9 @@ class ThreeTankAttacker(gym.Env):
         self.include_compromise = include_compromise
         self.logger = logging.getLogger(__class__.__name__)
 
-        self.adversarial_control_env = AdversarialControlEnv('TT-v0', None, defender, compromise_actuation_prob,
-                                                             compromise_observation_prob, history_length,
-                                                             include_compromise, noise_sigma, t_epoch, power, test_env)
+        self.adversarial_control_env = TEPThreatModel('TT-v0', None, defender, compromise_actuation_prob,
+                                                      compromise_observation_prob, history_length,
+                                                      include_compromise, noise_sigma, t_epoch, power, test_env)
 
         self.observation_space = gym.spaces.Box(
             low=np.array([0., 0.] * history_length + [0.] * (self.adversarial_control_env.env.action_dim + self.adversarial_control_env.env.observation_dim)) if self.include_compromise else np.array([0., 0.] * history_length),
@@ -126,9 +126,9 @@ class ThreeTankDefender(gym.Env):
         self.include_compromise = include_compromise
         self.logger = logging.getLogger(__class__.__name__)
 
-        self.adversarial_control_env = AdversarialControlEnv('TT-v0', attacker, None, compromise_actuation_prob,
-                                                             compromise_observation_prob, history_length,
-                                                             include_compromise, noise_sigma, t_epoch, power, test_env)
+        self.adversarial_control_env = TEPThreatModel('TT-v0', attacker, None, compromise_actuation_prob,
+                                                      compromise_observation_prob, history_length,
+                                                      include_compromise, noise_sigma, t_epoch, power, test_env)
 
         self.observation_space = gym.spaces.Box(
             low=np.tile(self.adversarial_control_env.env.observation_space.low, history_length),

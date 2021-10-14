@@ -6,8 +6,10 @@ import gym
 
 from agents.RLAgents import Agent
 from envs.control.control_env import ControlEnv
+from envs.control.threat.threat import ThreatModel
 
-class AdversarialControlEnv:
+
+class TEPThreatModel(ThreatModel):
     def __init__(self,
                  env,
                  attacker: Agent,
@@ -21,9 +23,7 @@ class AdversarialControlEnv:
                  power=.3,
                  test_env=False) -> None:
 
-        super().__init__()
-        self.attacker = attacker
-        self.defender = defender
+        super().__init__(env, attacker, defender, noise_sigma=noise_sigma, t_epoch=t_epoch, test_env=test_env)
         self.logger = logging.getLogger(__class__.__name__)
         self.compromise_actuation_prob = compromise_actuation_prob
         self.compromise_observation_prob = compromise_observation_prob
@@ -34,19 +34,6 @@ class AdversarialControlEnv:
         self.compromise = None
         self.attacker_history = None
         self.defender_history = None
-
-        if isinstance(env, str):
-            self.env = gym.make(f'{env}', noise_sigma=noise_sigma, test_env=test_env, t_epoch=t_epoch)
-        elif isinstance(env, ControlEnv):
-            self.env = env
-        else:
-            raise Exception('Invalid Environment.')
-
-    def set_attacker(self, attacker):
-        self.attacker = attacker
-
-    def set_defender(self, defender):
-        self.defender = defender
 
     def step(self) -> Any:
 
@@ -79,10 +66,7 @@ class AdversarialControlEnv:
 
     def reset(self, compromise=None):
 
-        if self.attacker is not None:
-            self.attacker.reset()
-        if self.defender is not None:
-            self.defender.reset()
+        super().reset()
 
         obs = self.env.reset()
 

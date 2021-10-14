@@ -4,7 +4,7 @@ import logging
 from typing import *
 
 from agents.RLAgents import Agent, ConstantAgent
-from envs.control.adversarial_control import AdversarialControlEnv
+from envs.control.threat.tep_threat import TEPThreatModel
 from envs.control.control_env import ControlEnv
 
 
@@ -17,11 +17,6 @@ class BioReactor(ControlEnv):
 
         self.action_space = gym.spaces.Box(low=np.array([0.0, 0.0]), high=np.array([3.0, 8.0]))
         self.observation_space = gym.spaces.Box(low=np.array([0.00, 0.00]), high=np.array([10., 10.]))
-
-        # self.observation_space = gym.spaces.Box(low=np.array([0.6, 1] * history_length + [0.] * (self.adversarial_control_env.env.action_dim + self.adversarial_control_env.env.observation_dim)) if self.include_compromise else np.array([-5., -5.] * history_length),
-        #                                         high=np.array([1.2, 2.] * history_length + [1.] * (self.adversarial_control_env.env.action_dim + self.adversarial_control_env.env.observation_dim)) if self.include_compromise else np.array([5., 5.] * history_length))
-        # self.action_space = gym.spaces.Box(low=-np.array([0.0, 3.0]),
-        #                                    high=np.array([1.0, 6.0]))
 
         self.action_dim = 2
         self.observation_dim = 2
@@ -95,9 +90,9 @@ class BioReactorAttacker(gym.Env):  # This is a noise generator attacker.
         self.include_compromise = include_compromise
         self.logger = logging.getLogger(__class__.__name__)
 
-        self.adversarial_control_env = AdversarialControlEnv('BRP-v0', None, defender, compromise_actuation_prob,
-                                                             compromise_observation_prob, history_length,
-                                                             include_compromise, noise_sigma, t_epoch, power, test_env)
+        self.adversarial_control_env = TEPThreatModel('BRP-v0', None, defender, compromise_actuation_prob,
+                                                      compromise_observation_prob, history_length,
+                                                      include_compromise, noise_sigma, t_epoch, power, test_env)
 
         self.observation_space = gym.spaces.Box(low=np.array([-5., -5.] * history_length + [0.] * (
                     self.adversarial_control_env.env.action_dim + self.adversarial_control_env.env.observation_dim)) if self.include_compromise else np.array(
@@ -133,9 +128,9 @@ class BioReactorDefender(gym.Env):
         self.include_compromise = include_compromise
         self.logger = logging.getLogger(__class__.__name__)
 
-        self.adversarial_control_env = AdversarialControlEnv('BRP-v0', attacker, None, compromise_actuation_prob,
-                                                             compromise_observation_prob, history_length,
-                                                             include_compromise, noise_sigma, t_epoch, power, test_env)
+        self.adversarial_control_env = TEPThreatModel('BRP-v0', attacker, None, compromise_actuation_prob,
+                                                      compromise_observation_prob, history_length,
+                                                      include_compromise, noise_sigma, t_epoch, power, test_env)
 
         self.observation_space = gym.spaces.Box(
             low=np.tile(self.adversarial_control_env.env.observation_space.low, history_length),
