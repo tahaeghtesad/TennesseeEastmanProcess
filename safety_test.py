@@ -44,7 +44,7 @@ def train_attacker(name, defender):
     att_model.save(f'{base_model_path}/{name}')
     agented_model = SimpleWrapperAgent(att_model)
     agent_reward = eval_agents(env_name, agented_model, defender)[0]
-    print(f'Att1/{i} - reward: {agent_reward:.2f}')
+    print(f'Agent defender {name} evaluated: {agent_reward:.2f}')
     return agented_model
 
 
@@ -68,7 +68,7 @@ def train_defender(name, attacker):
         callback=callback,
         tb_log_name=f'{name}'
     )
-    nominal_model.save(f'{base_model_path}/nominal_{i}')
+    nominal_model.save(f'{base_model_path}/{name}')
     agented_model = SimpleWrapperAgent(nominal_model)
     agent_reward = eval_agents(env_name, attacker, agented_model)[1]
     print(f'Agent attacker {name} evaluated: {agent_reward:.2f}')
