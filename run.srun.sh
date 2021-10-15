@@ -15,7 +15,7 @@
 ##module load Anaconda3/python-3.6
 ###module load cuDNN/7.5.0-CUDA-10.0.130
 
-source source /project/cacds/apps/anaconda3/5.0.1/etc/profile.d/conda.sh
+source /project/cacds/apps/anaconda3/5.0.1/etc/profile.d/conda.sh
 conda activate tep-gpu
 
 cd /home/teghtesa/TennesseeEastmanProcess
