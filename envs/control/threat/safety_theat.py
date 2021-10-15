@@ -16,13 +16,11 @@ class SafetyThreatModel(ThreatModel):
         _ = self.env.reset()
         self.adversarial_goal = self.env.goal_pos
         self.last_env_observation = self.env.reset()
-        lidar_to_adversary = self.env.obs_lidar([self.adversarial_goal], 0)
-        adversary_obs = np.hstack((self.env.action_space.low, lidar_to_adversary))
-        return adversary_obs, self.last_env_observation
+        return np.hstack((self.env.action_space.low, self.env.obs_lidar([self.adversarial_goal], 0))), self.last_env_observation
 
     def step(self):
         defender_action = self.defender.predict(self.last_env_observation)
-        attacker_action = self.attacker.predict(np.hstack((defender_action, self.last_env_observation)))
+        attacker_action = self.attacker.predict(np.hstack((defender_action, self.env.obs_lidar([self.adversarial_goal], 0))))
 
         self.last_env_observation, env_reward, done, info = self.env.step(attacker_action + defender_action)
         adversarial_distance_to_goal = self.env.dist_xy(self.adversarial_goal)
@@ -37,9 +35,6 @@ class SafetyThreatModel(ThreatModel):
         if self.env.dist_xy(self.env.goal_pos) <= 0.3 or self.env.dist_xy(self.adversarial_goal) < 0.3:
             done = True
 
-        lidar_to_adversary = self.env.obs_lidar([self.adversarial_goal], 0)
-        adversary_obs = np.hstack((defender_action, lidar_to_adversary))
-
         # obs, reward, done, info
-        return (adversary_obs, self.last_env_observation),\
+        return (np.hstack((defender_action, self.env.obs_lidar([self.adversarial_goal], 0))), self.last_env_observation),\
                (adversary_reward, env_reward), done, info
