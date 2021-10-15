@@ -30,6 +30,7 @@ class SafetyThreatModel(ThreatModel):
             goal_penalty = -1
             if self.env.dist_xy(self.adversarial_goal) <= 0.3:
                 goal_penalty = 0
+
         adversary_reward = (self.last_adversarial_distance_to_goal - adversarial_distance_to_goal + goal_penalty) * 0.01
         self.last_adversarial_distance_to_goal = adversarial_distance_to_goal
         if self.env.dist_xy(self.env.goal_pos) <= 0.3 or self.env.dist_xy(self.adversarial_goal) < 0.3:
