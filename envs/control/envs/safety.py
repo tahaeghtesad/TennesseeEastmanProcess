@@ -15,8 +15,8 @@ class SafetyEnvAttacker(gym.Env):
 
         self.adversarial_control_env = SafetyThreatModel(env, attacker=None, defender=defender)
         # Adversary receives Lidar (16,) and defender's action
-        self.observation_space = gym.spaces.Box(low=self.adversarial_control_env.env.action_space.low + [0] * 16,
-                                                high=self.adversarial_control_env.env.action_space.high + [1] * 16)
+        self.observation_space = gym.spaces.Box(low=np.hstack((self.adversarial_control_env.env.action_space.low, np.zeros(16))),
+                                                high=np.hstack((self.adversarial_control_env.env.action_space.high, np.ones(16))))
         self.action_space = self.adversarial_control_env.env.action_space
 
         self.defender_obs = np.zeros((4,))
