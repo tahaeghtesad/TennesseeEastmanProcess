@@ -1,4 +1,5 @@
 import os
+import sys
 
 import gym
 import safety_gym
@@ -18,6 +19,60 @@ def get_policy_class(policy_params):
             super().__init__(*args, **_kwargs, **policy_params)
 
     return CustomPolicy
+
+
+def train_attacker(name, defender):
+    att_model = PPO2(
+        policy=get_policy_class(dict(
+            net_arch=[dict(vf=[128, 64],
+                           pi=[128, 128])],
+            act_fun=tf.nn.tanh
+        )),
+        env=SafetyEnvAttacker(env_name, defender),
+        gamma=0.995,
+        verbose=0,
+        lam=0.97,
+        tensorboard_log='tb_logs/',
+        full_tensorboard_log=True
+    )
+
+    att_model.learn(
+        total_timesteps=train_length,
+        callback=callback,
+        tb_log_name=f'{name}'
+    )
+    att_model.save(f'{base_model_path}/{name}')
+    agented_model = SimpleWrapperAgent(att_model)
+    agent_reward = eval_agents(env_name, agented_model, defender)[0]
+    print(f'Att1/{i} - reward: {agent_reward:.2f}')
+    return agented_model
+
+
+def train_defender(name, attacker):
+    nominal_model = PPO2(
+        policy=get_policy_class(dict(
+            net_arch=[dict(vf=[128, 64],
+                           pi=[64, 64])],
+            act_fun=tf.nn.tanh
+        )),
+        env=SafetyEnvDefender(env_name, attacker),
+        gamma=0.995,
+        verbose=0,
+        lam=0.97,
+        tensorboard_log='tb_logs/',
+        full_tensorboard_log=True
+    )
+
+    nominal_model.learn(
+        total_timesteps=train_length,
+        callback=callback,
+        tb_log_name=f'{name}'
+    )
+    nominal_model.save(f'{base_model_path}/nominal_{i}')
+    agented_model = SimpleWrapperAgent(nominal_model)
+    agent_reward = eval_agents(env_name, attacker, agented_model)[1]
+    print(f'Agent attacker {name} evaluated: {agent_reward:.2f}')
+    return agented_model
 
 
 def callback(locals_, globals_):
@@ -56,134 +111,9 @@ if __name__ == '__main__':
     if not os.path.isdir(base_model_path):
         os.makedirs(base_model_path, exist_ok=True)
 
-    # Train Nominal
-    nominal_models = []
-    nominal_average_rewards = []
+    slurm_id = int(sys.argv[1])
 
-    for i in range(repeat):
-
-        nominal_model = PPO2(
-            policy=get_policy_class(dict(
-                net_arch=[dict(vf=[128, 64],
-                               pi=[64, 64])],
-                act_fun=tf.nn.tanh
-            )),
-            env=SafetyEnvDefender(env_name, ZeroAgent(2)),
-            gamma=0.995,
-            verbose=0,
-            lam=0.97,
-            tensorboard_log='tb_logs/',
-            full_tensorboard_log=True
-        )
-
-        nominal_model.learn(
-            total_timesteps=train_length,
-            callback=callback,
-            tb_log_name=f'nominal_{i}'
-        )
-        nominal_model.save(f'{base_model_path}/nominal_{i}')
-        agented_model = SimpleWrapperAgent(nominal_model)
-        agent_reward = eval_agents(env_name, ZeroAgent(2), agented_model)[1]
-        nominal_models.append(agented_model)
-        nominal_average_rewards.append(agent_reward)
-        print(f'Nominal/{i} - reward: {agent_reward:.2f}')
-
-    # Train Att 1
-
-    best_nominal = nominal_models[np.argmax(nominal_average_rewards)]
-    att1_models = []
-    att1_average_rewards = []
-
-    for i in range(repeat):
-        att1_model = PPO2(
-            policy=get_policy_class(dict(
-                net_arch=[dict(vf=[128, 64],
-                               pi=[128, 128])],
-                act_fun=tf.nn.tanh
-            )),
-            env=SafetyEnvAttacker(env_name, best_nominal),
-            gamma=0.995,
-            verbose=0,
-            lam=0.97,
-            tensorboard_log='tb_logs/',
-            full_tensorboard_log=True
-        )
-
-        att1_model.learn(
-            total_timesteps=train_length,
-            callback=callback,
-            tb_log_name=f'att1_{i}'
-        )
-        att1_model.save(f'{base_model_path}/att1_{i}')
-        agented_model = SimpleWrapperAgent(att1_model)
-        agent_reward = eval_agents(env_name, agented_model, best_nominal)[0]
-        att1_models.append(agented_model)
-        att1_average_rewards.append(agent_reward)
-        print(f'Att1/{i} - reward: {agent_reward:.2f}')
-
-    # Training robust
-
-    best_att1 = att1_models[np.argmax(att1_average_rewards)]
-    robust_models = []
-    robust_average_rewards = []
-
-    for i in range(repeat):
-
-        robust_model = PPO2(
-            policy=get_policy_class(dict(
-                net_arch=[dict(vf=[128, 64],
-                               pi=[64, 64])],
-                act_fun=tf.nn.tanh
-            )),
-            env=SafetyEnvDefender(env_name, best_att1),
-            gamma=0.995,
-            verbose=0,
-            lam=0.97,
-            tensorboard_log='tb_logs/',
-            full_tensorboard_log=True
-        )
-
-        robust_model.learn(
-            total_timesteps=train_length,
-            callback=callback,
-            tb_log_name=f'robust_{i}'
-        )
-        robust_model.save(f'{base_model_path}/robust_{i}')
-        agented_model = SimpleWrapperAgent(robust_model)
-        agent_reward = eval_agents(env_name, best_att1, agented_model)[1]
-        robust_models.append(agented_model)
-        robust_average_rewards.append(agent_reward)
-        print(f'Robust/{i} - reward: {agent_reward:.2f}')
-
-    # Training att 2
-
-    best_robust = robust_models[np.argmax(robust_average_rewards)]
-    att2_models = []
-    att2_average_rewards = []
-
-    for i in range(repeat):
-        att2_model = PPO2(
-            policy=get_policy_class(dict(
-                net_arch=[dict(vf=[128, 64],
-                               pi=[128, 128])],
-                act_fun=tf.nn.tanh
-            )),
-            env=SafetyEnvAttacker(env_name, best_robust),
-            gamma=0.995,
-            verbose=0,
-            lam=0.97,
-            tensorboard_log='tb_logs/',
-            full_tensorboard_log=True
-        )
-
-        att2_model.learn(
-            total_timesteps=train_length,
-            callback=callback,
-            tb_log_name=f'att1_{i}'
-        )
-        att2_model.save(f'{base_model_path}/att2_{i}')
-        agented_model = SimpleWrapperAgent(att2_model)
-        agent_reward = eval_agents(env_name, agented_model, best_robust)[0]
-        att2_models.append(agented_model)
-        att2_average_rewards.append(agent_reward)
-        print(f'Att2/{i} - reward: {agent_reward:.2f}')
+    nominal = train_defender(f'nominal-{slurm_id}', ZeroAgent(2))
+    att1 = train_attacker(f'adversary-1-{slurm_id}', nominal)
+    robust = train_defender(f'robust-{slurm_id}', att1)
+    att2 = train_attacker(f'adversary-2-{slurm_id}', robust)

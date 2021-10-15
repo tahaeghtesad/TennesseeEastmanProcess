@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #SBATCH -J TEP
-#SBATCH -t 2:00:00
+#SBATCH -t 6:00:00
 #SBATCH -N 1 -n 2
 #SBATCH --mem 8GB
 ##SBATCH -p gpu
@@ -9,13 +9,16 @@
 
 #SBATCH -A laszka
 
+#SBATCH --array=1-5
+
 ##module load GCC/7.2.0-2.29
 ##module load Anaconda3/python-3.6
 ###module load cuDNN/7.5.0-CUDA-10.0.130
 
-source /home/${USER}/.bashrc
-conda activate tep-cpu
-cd /project/laszka/TennesseeEastmanProcess/
+source source /project/cacds/apps/anaconda3/5.0.1/etc/profile.d/conda.sh
+conda activate tep-gpu
+
+cd /home/teghtesa/TennesseeEastmanProcess
 export PATH=$PWD/gambit-project/:$PATH
 
-python cli.py "$@"
+python safety_test.py $SLURM_ARRAY_TASK_ID
