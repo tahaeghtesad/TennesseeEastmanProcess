@@ -48,8 +48,8 @@ def eval_agents(env, attacker, defender):
 robot = 'Car'
 env_name = f'Safexp-{robot}Goal0-v0'
 base_model_path = 'lee-models'
-repeat = 1
-train_length = 1_000
+repeat = 5
+train_length = 400_000
 
 if __name__ == '__main__':
     if not os.path.isdir(base_model_path):
