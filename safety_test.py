@@ -36,13 +36,14 @@ def eval_agents(env, attacker, defender):
     defender_rewards = []
     attacker_rewards = []
 
-    done = False
-    while not done:
-        _, (r_a, r_d), done, _ = env.step()
-        defender_rewards.append(r_d)
-        attacker_rewards.append(r_a)
+    for epoch in range(10):
+        done = False
+        while not done:
+            _, (r_a, r_d), done, _ = env.step()
+            defender_rewards.append(r_d)
+            attacker_rewards.append(r_a)
 
-    return sum(attacker_rewards)/len(attacker_rewards), sum(defender_rewards)/len(defender_rewards)
+        return sum(attacker_rewards)/len(attacker_rewards), sum(defender_rewards)/len(defender_rewards)
 
 
 robot = 'Car'
