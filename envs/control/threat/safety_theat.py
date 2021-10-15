@@ -41,5 +41,5 @@ class SafetyThreatModel(ThreatModel):
         adversary_obs = np.hstack((defender_action, lidar_to_adversary))
 
         # obs, reward, done, info
-        return (adversary_obs, self.last_env_observation), self.last_env_observation,\
+        return (adversary_obs, self.last_env_observation),\
                (adversary_reward, env_reward), done, info
