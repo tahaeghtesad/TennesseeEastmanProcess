@@ -37,6 +37,9 @@ class SafetyThreatModel(ThreatModel):
         if self.env.dist_xy(self.env.goal_pos) <= 0.3 or self.env.dist_xy(self.adversarial_goal) < 0.3:
             done = True
 
+        lidar_to_adversary = self.env.obs_lidar([self.adversarial_goal], 0)
+        adversary_obs = np.hstack((defender_action, lidar_to_adversary))
+
         # obs, reward, done, info
-        return (np.hstack((defender_action, self.last_env_observation)), self.last_env_observation),\
+        return (adversary_obs, self.last_env_observation), self.last_env_observation,\
                (adversary_reward, env_reward), done, info
