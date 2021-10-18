@@ -104,7 +104,7 @@ def train_nominal(name, env):
 
 def callback(locals_, globals_):
     self_ = locals_['self']
-    if 'rewards' in locals_:
+    if 'rewards' in locals_ and hasattr(self_, 'num_timesteps'):
         if 'writer' in locals_ and locals_['writer'] is not None:
             summary = tf.Summary(
                 value=[tf.Summary.Value(tag=f'env/reward', simple_value=locals_['rewards'][0])])
