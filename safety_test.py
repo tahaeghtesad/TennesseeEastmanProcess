@@ -30,7 +30,7 @@ def train_attacker(name, defender):
         )),
         env=SafetyEnvAttacker(env_name, defender),
         gamma=0.995,
-        verbose=0,
+        verbose=1,
         lam=0.97,
         tensorboard_log='tb_logs/',
         full_tensorboard_log=True
@@ -57,7 +57,7 @@ def train_defender(name, attacker):
         )),
         env=SafetyEnvDefender(env_name, attacker),
         gamma=0.995,
-        verbose=0,
+        verbose=1,
         lam=0.97,
         tensorboard_log='tb_logs/',
         full_tensorboard_log=True
@@ -84,7 +84,7 @@ def train_nominal(name, env):
         )),
         env=gym.make(env),
         gamma=0.995,
-        verbose=0,
+        verbose=1,
         lam=0.97,
         tensorboard_log='tb_logs/',
         full_tensorboard_log=True
@@ -104,10 +104,10 @@ def train_nominal(name, env):
 
 def callback(locals_, globals_):
     self_ = locals_['self']
-    if 'reward' in locals_:
+    if 'rewards' in locals_:
         if 'writer' in locals_ and locals_['writer'] is not None:
             summary = tf.Summary(
-                value=[tf.Summary.Value(tag=f'env/reward', simple_value=locals_['reward'])])
+                value=[tf.Summary.Value(tag=f'env/reward', simple_value=locals_['rewards'][0])])
             locals_['writer'].add_summary(summary, self_.num_timesteps)
 
 
