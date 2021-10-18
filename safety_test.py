@@ -22,7 +22,7 @@ def get_policy_class(policy_params):
 
 
 def train_attacker(name, defender):
-    att_model = PPO2(
+    model = PPO2(
         policy=get_policy_class(dict(
             net_arch=[dict(vf=[128, 64],
                            pi=[128, 128])],
@@ -36,20 +36,20 @@ def train_attacker(name, defender):
         full_tensorboard_log=True
     )
 
-    att_model.learn(
+    model.learn(
         total_timesteps=train_length,
         callback=callback,
         tb_log_name=f'{name}'
     )
-    att_model.save(f'{base_model_path}/{name}')
-    agented_model = SimpleWrapperAgent(att_model)
+    model.save(f'{base_model_path}/{name}')
+    agented_model = SimpleWrapperAgent(model)
     agent_reward = eval_agents(env_name, agented_model, defender)[0]
     print(f'Agent defender {name} evaluated: {agent_reward:.2f}')
     return agented_model
 
 
 def train_defender(name, attacker):
-    nominal_model = PPO2(
+    model = PPO2(
         policy=get_policy_class(dict(
             net_arch=[dict(vf=[128, 64],
                            pi=[64, 64])],
@@ -63,14 +63,41 @@ def train_defender(name, attacker):
         full_tensorboard_log=True
     )
 
-    nominal_model.learn(
+    model.learn(
         total_timesteps=train_length,
         callback=callback,
         tb_log_name=f'{name}'
     )
-    nominal_model.save(f'{base_model_path}/{name}')
-    agented_model = SimpleWrapperAgent(nominal_model)
+    model.save(f'{base_model_path}/{name}')
+    agented_model = SimpleWrapperAgent(model)
     agent_reward = eval_agents(env_name, attacker, agented_model)[1]
+    print(f'Agent attacker {name} evaluated: {agent_reward:.2f}')
+    return agented_model
+
+
+def train_nominal(name, env):
+    model = PPO2(
+        policy=get_policy_class(dict(
+            net_arch=[dict(vf=[128, 64],
+                           pi=[64, 64])],
+            act_fun=tf.nn.tanh
+        )),
+        env=gym.make(env),
+        gamma=0.995,
+        verbose=0,
+        lam=0.97,
+        tensorboard_log='tb_logs/',
+        full_tensorboard_log=True
+    )
+
+    model.learn(
+        total_timesteps=train_length,
+        callback=callback,
+        tb_log_name=f'{name}'
+    )
+    model.save(f'{base_model_path}/{name}')
+    agented_model = SimpleWrapperAgent(model)
+    agent_reward = eval_agents(env_name, ZeroAgent(2), agented_model)[1]
     print(f'Agent attacker {name} evaluated: {agent_reward:.2f}')
     return agented_model
 
@@ -105,7 +132,7 @@ robot = 'Car'
 env_name = f'Safexp-{robot}Goal0-v0'
 base_model_path = 'lee-models'
 repeat = 5
-train_length = 400_000
+train_length = 500_000
 
 if __name__ == '__main__':
     if not os.path.isdir(base_model_path):
@@ -113,7 +140,7 @@ if __name__ == '__main__':
 
     slurm_id = int(sys.argv[1])
 
-    nominal = train_defender(f'nominal-{slurm_id}', ZeroAgent(2))
-    att1 = train_attacker(f'adversary-1-{slurm_id}', nominal)
-    robust = train_defender(f'robust-{slurm_id}', att1)
-    att2 = train_attacker(f'adversary-2-{slurm_id}', robust)
+    if slurm_id == 1:
+        train_defender(f'defender', ZeroAgent(2))
+    elif slurm_id == 2:
+        train_nominal(f'nominal', env_name)
