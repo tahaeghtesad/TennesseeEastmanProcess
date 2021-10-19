@@ -5,7 +5,7 @@ import gym
 import safety_gym
 from agents.RLAgents import ZeroAgent, SimpleWrapperAgent
 from envs.control.envs.safety import SafetyEnvAttacker, SafetyEnvDefender
-from envs.control.threat.safety_theat import SafetyThreatModel
+from envs.control.threat.safety_threat import SafetyThreatModel
 from stable_baselines.common.policies import MlpPolicy
 from stable_baselines.ppo2 import PPO2
 import tensorflow as tf
