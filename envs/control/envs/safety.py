@@ -5,7 +5,7 @@ import gym
 import numpy as np
 
 from agents.RLAgents import Agent, ConstantAgent
-from envs.control.threat.safety_theat import SafetyThreatModel
+from envs.control.threat.safety_threat import SafetyThreatModel
 
 
 class SafetyEnvAttacker(gym.Env):
