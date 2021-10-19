@@ -2,14 +2,14 @@
 
 #SBATCH -J TEP
 #SBATCH -t 6:00:00
-#SBATCH -N 1 -n 2
+#SBATCH -N 1 -n 4
 #SBATCH --mem 8GB
 #SBATCH -p gpu
 #SBATCH --gres=gpu:1
 
 #SBATCH -A laszka
 
-#SBATCH --array=1-2
+#SBATCH --array=1-5
 
 ##module load GCC/7.2.0-2.29
 ##module load Anaconda3/python-3.6

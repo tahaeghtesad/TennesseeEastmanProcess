@@ -21,7 +21,7 @@ def get_policy_class(policy_params):
     return CustomPolicy
 
 
-def train_attacker(name, defender):
+def train_attacker(name, env_name, defender):
     model = PPO2(
         policy=get_policy_class(dict(
             net_arch=[dict(vf=[128, 64],
@@ -48,7 +48,7 @@ def train_attacker(name, defender):
     return agented_model
 
 
-def train_defender(name, attacker):
+def train_defender(name, env_name, attacker):
     model = PPO2(
         policy=get_policy_class(dict(
             net_arch=[dict(vf=[128, 64],
@@ -104,11 +104,12 @@ def train_nominal(name, env):
 
 def callback(locals_, globals_):
     self_ = locals_['self']
-    if 'rewards' in locals_ and hasattr(self_, 'num_timesteps'):
+    if 'rewards' in locals_:
         if 'writer' in locals_ and locals_['writer'] is not None:
             summary = tf.Summary(
                 value=[tf.Summary.Value(tag=f'env/reward', simple_value=locals_['rewards'][0])])
-            locals_['writer'].add_summary(summary, self_.num_timesteps)
+            locals_['writer'].add_summary(summary, self_.model.num_timesteps)
+    return True
 
 
 def eval_agents(env, attacker, defender):
@@ -128,19 +129,20 @@ def eval_agents(env, attacker, defender):
         return sum(attacker_rewards)/len(attacker_rewards), sum(defender_rewards)/len(defender_rewards)
 
 
-robot = 'Car'
-env_name = f'Safexp-{robot}Goal0-v0'
-base_model_path = 'lee-models'
-repeat = 5
-train_length = 500_000
-
 if __name__ == '__main__':
+
+    robot = 'Car'
+    env_name = f'Safexp-{robot}Goal0-v0'
+    base_model_path = 'lee-models'
+    repeat = 5
+    train_length = 2_000_000
+
     if not os.path.isdir(base_model_path):
         os.makedirs(base_model_path, exist_ok=True)
 
     slurm_id = int(sys.argv[1])
 
-    if slurm_id == 1:
-        train_defender(f'defender', ZeroAgent(2))
-    elif slurm_id == 2:
-        train_nominal(f'nominal', env_name)
+    nominal = train_nominal(f'nominal-{slurm_id}', env_name)
+    att1 = train_attacker(f'adversary-1-{slurm_id}', env_name, nominal)
+    robust = train_defender(f'robust-{slurm_id}', env_name, att1)
+    att2 = train_attacker(f'adversary-2-{slurm_id}', env_name, robust)
