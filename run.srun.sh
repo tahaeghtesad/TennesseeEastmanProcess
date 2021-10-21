@@ -22,4 +22,4 @@ cd /home/teghtesa/TennesseeEastmanProcess
 export PATH=$PWD/gambit-project/:$PATH
 
 python safety_test.py $SLURM_ARRAY_TASK_ID
-cp $TMPDIR/tb_logs /home/teghtesa/TennesseeEastmanProcess/new_logs
+cp -r $TMPDIR/tb_logs /home/teghtesa/TennesseeEastmanProcess/new_logs
