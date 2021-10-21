@@ -11,6 +11,8 @@ from stable_baselines.ppo2 import PPO2
 import tensorflow as tf
 import numpy as np
 
+temp_path = os.environ['TMPDIR']
+
 
 def get_policy_class(policy_params):
     # policy params must have 'act_fun' and 'layers'
@@ -22,83 +24,93 @@ def get_policy_class(policy_params):
 
 
 def train_attacker(name, env_name, defender):
-    model = PPO2(
-        policy=get_policy_class(dict(
-            net_arch=[dict(vf=[128, 64],
-                           pi=[128, 128])],
-            act_fun=tf.nn.tanh
-        )),
-        env=SafetyEnvAttacker(env_name, defender),
-        gamma=0.995,
-        verbose=1,
-        lam=0.97,
-        tensorboard_log='tb_logs/',
-        full_tensorboard_log=True
-    )
 
-    model.learn(
-        total_timesteps=train_length,
-        callback=callback,
-        tb_log_name=f'{name}'
-    )
+    if os.path.isfile(f'{base_model_path}/{name}.zip'):
+        model = PPO2.load(f'{base_model_path}/{name}.zip', env=SafetyEnvAttacker(env_name, defender))
+    else:
+        model = PPO2(
+            policy=get_policy_class(dict(
+                net_arch=[dict(vf=[128, 64],
+                               pi=[128, 128])],
+                act_fun=tf.nn.tanh
+            )),
+            env=SafetyEnvAttacker(env_name, defender),
+            gamma=0.995,
+            verbose=1,
+            lam=0.97,
+            tensorboard_log=f'{temp_path}/tb_logs/',
+            full_tensorboard_log=True
+        )
+
+        model.learn(
+            total_timesteps=train_length,
+            callback=callback,
+            tb_log_name=f'{name}'
+        )
     model.save(f'{base_model_path}/{name}')
     agented_model = SimpleWrapperAgent(model)
     agent_reward = eval_agents(env_name, agented_model, defender)[0]
-    print(f'Agent defender {name} evaluated: {agent_reward:.2f}')
+    print(f'Agent {name} evaluated: {agent_reward:.2f}')
     return agented_model
 
 
 def train_defender(name, env_name, attacker):
-    model = PPO2(
-        policy=get_policy_class(dict(
-            net_arch=[dict(vf=[128, 64],
-                           pi=[64, 64])],
-            act_fun=tf.nn.tanh
-        )),
-        env=SafetyEnvDefender(env_name, attacker),
-        gamma=0.995,
-        verbose=1,
-        lam=0.97,
-        tensorboard_log='tb_logs/',
-        full_tensorboard_log=True
-    )
+    if os.path.isfile(f'{base_model_path}/{name}.zip'):
+        model = PPO2.load(f'{base_model_path}/{name}.zip', env=SafetyEnvDefender(env_name, attacker))
+    else:
+        model = PPO2(
+            policy=get_policy_class(dict(
+                net_arch=[dict(vf=[128, 64],
+                               pi=[64, 64])],
+                act_fun=tf.nn.tanh
+            )),
+            env=SafetyEnvDefender(env_name, attacker),
+            gamma=0.995,
+            verbose=1,
+            lam=0.97,
+            tensorboard_log=f'{temp_path}/tb_logs/',
+            full_tensorboard_log=True
+        )
 
-    model.learn(
-        total_timesteps=train_length,
-        callback=callback,
-        tb_log_name=f'{name}'
-    )
-    model.save(f'{base_model_path}/{name}')
+        model.learn(
+            total_timesteps=train_length,
+            callback=callback,
+            tb_log_name=f'{name}'
+        )
+        model.save(f'{base_model_path}/{name}')
     agented_model = SimpleWrapperAgent(model)
     agent_reward = eval_agents(env_name, attacker, agented_model)[1]
-    print(f'Agent attacker {name} evaluated: {agent_reward:.2f}')
+    print(f'Agent {name} evaluated: {agent_reward:.2f}')
     return agented_model
 
 
 def train_nominal(name, env):
-    model = PPO2(
-        policy=get_policy_class(dict(
-            net_arch=[dict(vf=[128, 64],
-                           pi=[64, 64])],
-            act_fun=tf.nn.tanh
-        )),
-        env=gym.make(env),
-        gamma=0.995,
-        verbose=1,
-        lam=0.97,
-        tensorboard_log='tb_logs/',
-        full_tensorboard_log=True
-    )
+    if os.path.isfile(f'{base_model_path}/{name}.zip'):
+        model = PPO2.load(f'{base_model_path}/{name}.zip', env=gym.make(env))
+    else:
+        model = PPO2(
+            policy=get_policy_class(dict(
+                net_arch=[dict(vf=[128, 64],
+                               pi=[64, 64])],
+                act_fun=tf.nn.tanh
+            )),
+            env=gym.make(env),
+            gamma=0.995,
+            verbose=1,
+            lam=0.97,
+            tensorboard_log=f'{temp_path}/tb_logs/',
+            full_tensorboard_log=True
+        )
 
-    model.learn(
-        total_timesteps=train_length,
-        callback=callback,
-        tb_log_name=f'{name}'
-    )
-    model.save(f'{base_model_path}/{name}')
+        model.learn(
+            total_timesteps=train_length,
+            callback=callback,
+            tb_log_name=f'{name}'
+        )
+        model.save(f'{base_model_path}/{name}')
     agented_model = SimpleWrapperAgent(model)
     agent_reward = eval_agents(env_name, ZeroAgent(2), agented_model)[1]
-    print(f'Agent attacker {name} evaluated: {agent_reward:.2f}')
+    print(f'Agent {name} evaluated: {agent_reward:.2f}')
     return agented_model
 
 

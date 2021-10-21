@@ -37,8 +37,8 @@ class SafetyThreatModel(ThreatModel):
             done = True
         if adversarial_distance_to_goal < 0.3:
             done = True
-            adversary_reward += 1e-2
+            adversary_reward += 1
 
         # obs, reward, done, info
         return (np.hstack((defender_action, self.env.obs_lidar([self.adversarial_goal], 0))), self.last_env_observation),\
-               (adversary_reward, env_reward), done, info
+               (adversary_reward * 1e-2, env_reward), done, info
