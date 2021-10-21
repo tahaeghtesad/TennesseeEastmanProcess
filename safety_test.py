@@ -6,6 +6,7 @@ import safety_gym
 from agents.RLAgents import ZeroAgent, SimpleWrapperAgent
 from envs.control.envs.safety import SafetyEnvAttacker, SafetyEnvDefender
 from envs.control.threat.safety_threat import SafetyThreatModel
+from stable_baselines.common import make_vec_env
 from stable_baselines.common.policies import MlpPolicy
 from stable_baselines.ppo2 import PPO2
 import tensorflow as tf
@@ -24,9 +25,10 @@ def get_policy_class(policy_params):
 
 
 def train_attacker(name, env_name, defender):
+    env = make_vec_env(SafetyEnvAttacker, env_kwargs=dict(env=env_name, defender=defender), n_envs=2)
 
     if os.path.isfile(f'{base_model_path}/{name}.zip'):
-        model = PPO2.load(f'{base_model_path}/{name}.zip', env=SafetyEnvAttacker(env_name, defender))
+        model = PPO2.load(f'{base_model_path}/{name}.zip', env=env)
     else:
         model = PPO2(
             policy=get_policy_class(dict(
@@ -34,7 +36,7 @@ def train_attacker(name, env_name, defender):
                                pi=[128, 128])],
                 act_fun=tf.nn.tanh
             )),
-            env=SafetyEnvAttacker(env_name, defender),
+            env=env,
             gamma=0.995,
             verbose=1,
             lam=0.97,
@@ -55,8 +57,10 @@ def train_attacker(name, env_name, defender):
 
 
 def train_defender(name, env_name, attacker):
+    env = make_vec_env(SafetyEnvDefender, env_kwargs=dict(env=env_name, attacker=attacker), n_envs=2)
+
     if os.path.isfile(f'{base_model_path}/{name}.zip'):
-        model = PPO2.load(f'{base_model_path}/{name}.zip', env=SafetyEnvDefender(env_name, attacker))
+        model = PPO2.load(f'{base_model_path}/{name}.zip', env=env)
     else:
         model = PPO2(
             policy=get_policy_class(dict(
@@ -64,7 +68,7 @@ def train_defender(name, env_name, attacker):
                                pi=[64, 64])],
                 act_fun=tf.nn.tanh
             )),
-            env=SafetyEnvDefender(env_name, attacker),
+            env=env,
             gamma=0.995,
             verbose=1,
             lam=0.97,
@@ -85,8 +89,10 @@ def train_defender(name, env_name, attacker):
 
 
 def train_nominal(name, env):
+    env = make_vec_env(env, n_envs=2)
+
     if os.path.isfile(f'{base_model_path}/{name}.zip'):
-        model = PPO2.load(f'{base_model_path}/{name}.zip', env=gym.make(env))
+        model = PPO2.load(f'{base_model_path}/{name}.zip', env=env)
     else:
         model = PPO2(
             policy=get_policy_class(dict(
@@ -94,7 +100,7 @@ def train_nominal(name, env):
                                pi=[64, 64])],
                 act_fun=tf.nn.tanh
             )),
-            env=gym.make(env),
+            env=env,
             gamma=0.995,
             verbose=1,
             lam=0.97,
