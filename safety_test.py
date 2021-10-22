@@ -52,7 +52,7 @@ def train_attacker(name, env_name, defender):
     model.save(f'{base_model_path}/{name}')
     agented_model = SimpleWrapperAgent(model)
     agent_reward = eval_agents(env_name, agented_model, defender)[0]
-    print(f'Agent {name} evaluated: {agent_reward:.2f}')
+    print(f'Agent {name} evaluated: {agent_reward:.4f}')
     return agented_model
 
 
@@ -84,7 +84,7 @@ def train_defender(name, env_name, attacker):
         model.save(f'{base_model_path}/{name}')
     agented_model = SimpleWrapperAgent(model)
     agent_reward = eval_agents(env_name, attacker, agented_model)[1]
-    print(f'Agent {name} evaluated: {agent_reward:.2f}')
+    print(f'Agent {name} evaluated: {agent_reward:.4f}')
     return agented_model
 
 
@@ -116,7 +116,7 @@ def train_nominal(name, env):
         model.save(f'{base_model_path}/{name}')
     agented_model = SimpleWrapperAgent(model)
     agent_reward = eval_agents(env_name, ZeroAgent(2), agented_model)[1]
-    print(f'Agent {name} evaluated: {agent_reward:.2f}')
+    print(f'Agent {name} evaluated: {agent_reward:.4f}')
     return agented_model
 
 
@@ -139,10 +139,14 @@ def eval_agents(env, attacker, defender):
 
     for epoch in range(10):
         done = False
+        adversary_episode_reward = 0
+        defender_episode_reward = 0
         while not done:
             _, (r_a, r_d), done, _ = env.step()
-            defender_rewards.append(r_d)
-            attacker_rewards.append(r_a)
+            adversary_episode_reward += r_a
+            defender_episode_reward += r_d
+        defender_rewards.append(defender_episode_reward)
+        attacker_rewards.append(adversary_episode_reward)
 
         return sum(attacker_rewards)/len(attacker_rewards), sum(defender_rewards)/len(defender_rewards)
 
