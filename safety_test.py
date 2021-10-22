@@ -50,7 +50,7 @@ def train_attacker(name, env_name, defender):
             tb_log_name=f'{name}'
         )
     model.save(f'{base_model_path}/{name}')
-    agented_model = SimpleWrapperAgent(model)
+    agented_model = SimpleWrapperAgent(name, model)
     agent_reward = eval_agents(env_name, agented_model, defender)[0]
     print(f'Agent {name} evaluated: {agent_reward:.4f}')
     return agented_model
@@ -82,7 +82,7 @@ def train_defender(name, env_name, attacker):
             tb_log_name=f'{name}'
         )
         model.save(f'{base_model_path}/{name}')
-    agented_model = SimpleWrapperAgent(model)
+    agented_model = SimpleWrapperAgent(name, model)
     agent_reward = eval_agents(env_name, attacker, agented_model)[1]
     print(f'Agent {name} evaluated: {agent_reward:.4f}')
     return agented_model
@@ -114,8 +114,8 @@ def train_nominal(name, env):
             tb_log_name=f'{name}'
         )
         model.save(f'{base_model_path}/{name}')
-    agented_model = SimpleWrapperAgent(model)
-    agent_reward = eval_agents(env_name, ZeroAgent(2), agented_model)[1]
+    agented_model = SimpleWrapperAgent(name, model)
+    agent_reward = eval_agents(env_name, ZeroAgent('Zero', 2), agented_model)[1]
     print(f'Agent {name} evaluated: {agent_reward:.4f}')
     return agented_model
 
@@ -131,24 +131,36 @@ def callback(locals_, globals_):
 
 
 def eval_agents(env, attacker, defender):
+    epochs = 1000
+    print(f'Evaluating {attacker} vs. {defender} in environment {env} for {epochs} epoch(s).')
     env = SafetyThreatModel(env, attacker, defender)
 
     defender_rewards = []
     attacker_rewards = []
+    lengths = []
 
-    for epoch in range(10):
+    for epoch in range(epochs):
         done = False
         _ = env.reset()
         adversary_episode_reward = 0
         defender_episode_reward = 0
+        step = 0
         while not done:
             _, (r_a, r_d), done, _ = env.step()
             adversary_episode_reward += r_a
             defender_episode_reward += r_d
+            step += 1
         defender_rewards.append(defender_episode_reward)
         attacker_rewards.append(adversary_episode_reward)
+        lengths.append(step)
 
-        return sum(attacker_rewards)/len(attacker_rewards), sum(defender_rewards)/len(defender_rewards)
+    print(f'Average episode length: {sum(lengths)/len(lengths)}')
+    print(f'Average episode reward for adversary: {sum(attacker_rewards)/len(attacker_rewards)}')
+    print(f'Average episode reward for defender: {sum(defender_rewards) / len(defender_rewards)}')
+    print(f'Average step reward for adversary: {sum(attacker_rewards) / len(attacker_rewards) / sum(lengths)}')
+    print(f'Average step reward for defender: {sum(defender_rewards) / len(defender_rewards) / sum(lengths)}')
+
+    return sum(attacker_rewards)/len(attacker_rewards), sum(defender_rewards)/len(defender_rewards)
 
 
 if __name__ == '__main__':

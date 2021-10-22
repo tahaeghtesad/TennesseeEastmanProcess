@@ -6,11 +6,15 @@ import numpy as np
 
 class Agent:
 
-    def __init__(self) -> None:
+    def __init__(self, name) -> None:
         super().__init__()
+        self.name = name
 
     def predict(self, observation, state=None, mask=None, deterministic=True):
         raise NotImplementedError()
+
+    def __repr__(self):
+        return self.name
 
     def reset(self):
         pass
@@ -18,8 +22,8 @@ class Agent:
 
 class MixedStrategyAgent(Agent):
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, name):
+        super().__init__(name)
         self.probabilities = None
         self.policies = []
 
@@ -35,8 +39,8 @@ class MixedStrategyAgent(Agent):
 
 class SinglePolicyMixedStrategyAgent(MixedStrategyAgent):
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, name):
+        super().__init__(name)
         self.current_policy = None
 
     def reset(self):
@@ -48,8 +52,8 @@ class SinglePolicyMixedStrategyAgent(MixedStrategyAgent):
 
 class SimpleWrapperAgent(Agent):
 
-    def __init__(self, agent: [Agent]) -> None:
-        super().__init__()
+    def __init__(self, name, agent: [Agent]) -> None:
+        super().__init__(name)
         self.agent = agent
 
     def predict(self, observation, state=None, mask=None, deterministic=True):
@@ -61,9 +65,12 @@ class SimpleWrapperAgent(Agent):
 
 class ConstantAgent(Agent):
 
-    def __init__(self, action) -> None:
-        super().__init__()
+    def __init__(self, name, action) -> None:
+        super().__init__(name)
         self.action = action
+
+    def __repr__(self):
+        return f'{self.name}-{self.action}'
 
     def predict(self, observation, state=None, mask=None, deterministic=True):
         return self.action
@@ -71,5 +78,5 @@ class ConstantAgent(Agent):
 
 class ZeroAgent(ConstantAgent):
 
-    def __init__(self, action_dim):
-        super().__init__(np.zeros(action_dim))
+    def __init__(self, name, action_dim):
+        super().__init__(name, np.zeros(action_dim))
