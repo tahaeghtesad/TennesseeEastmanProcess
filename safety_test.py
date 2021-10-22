@@ -132,13 +132,13 @@ def callback(locals_, globals_):
 
 def eval_agents(env, attacker, defender):
     env = SafetyThreatModel(env, attacker, defender)
-    _ = env.reset()
 
     defender_rewards = []
     attacker_rewards = []
 
     for epoch in range(10):
         done = False
+        _ = env.reset()
         adversary_episode_reward = 0
         defender_episode_reward = 0
         while not done:
