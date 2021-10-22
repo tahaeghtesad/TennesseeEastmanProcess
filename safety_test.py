@@ -10,6 +10,7 @@ from stable_baselines.common import make_vec_env
 from stable_baselines.common.policies import MlpPolicy
 from stable_baselines.ppo2 import PPO2
 import tensorflow as tf
+from tqdm import tqdm
 import numpy as np
 
 temp_path = os.environ['TMPDIR']
@@ -131,7 +132,7 @@ def callback(locals_, globals_):
 
 
 def eval_agents(env, attacker, defender):
-    epochs = 1000
+    epochs = 100
     print(f'Evaluating {attacker} vs. {defender} in environment {env} for {epochs} epoch(s).')
     env = SafetyThreatModel(env, attacker, defender)
 
@@ -139,7 +140,7 @@ def eval_agents(env, attacker, defender):
     attacker_rewards = []
     lengths = []
 
-    for epoch in range(epochs):
+    for epoch in tqdm(range(epochs)):
         done = False
         _ = env.reset()
         adversary_episode_reward = 0
@@ -169,7 +170,7 @@ if __name__ == '__main__':
     env_name = f'Safexp-{robot}Goal0-v0'
     base_model_path = 'lee-models'
     repeat = 5
-    train_length = 2_000_000
+    train_length = 1_000_000
 
     if not os.path.isdir(base_model_path):
         os.makedirs(base_model_path, exist_ok=True)
