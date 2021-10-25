@@ -62,7 +62,7 @@ def make_vec_env(env_id, n_envs=1, seed=None, start_index=0,
                 env.action_space.seed(seed + rank)
             # Wrap the env in a Monitor wrapper
             # to have additional training information
-            env = Monitor(env)
+            # env = Monitor(env)
             # Optionally, wrap the environment with the provided wrapper
             if wrapper_class is not None:
                 env = wrapper_class(env)
