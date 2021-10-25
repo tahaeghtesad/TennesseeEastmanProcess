@@ -11,6 +11,10 @@ class SafetyThreatModel(ThreatModel):
 
         self.last_env_observation = None
 
+        config = self.env.config
+        config['placements_extents'] = [-2.0, -2.0, 2.0, 2.0]
+        config['lidar_max_dist'] = 8 * config['placements_extents'][3]
+
     def reset(self):
         super().reset()
         _ = self.env.reset()

@@ -17,17 +17,6 @@ import numpy as np
 temp_path = os.environ['TMPDIR']
 
 
-def register_envs():
-    for env_id in ['Safexp-PointGoal0-v0', 'Safexp-CarGoal0-v0']:
-        env = gym.make(env_id)
-        config = env.config
-        config['placements_extents'] = [-2.0, -2.0, 2.0, 2.0]
-        config['lidar_max_dist'] = 8 * config['placements_extents'][3]
-        register(id=env_id,
-                 entry_point='safety_gym.envs.mujoco:Engine',
-                 kwargs={'config': config})
-
-
 def get_policy_class(policy_params):
     # policy params must have 'act_fun' and 'layers'
     class CustomPolicy(MlpPolicy):
@@ -103,6 +92,9 @@ def train_defender(name, env_name, attacker):
 
 def train_nominal(name, env):
     env = make_vec_env(env, n_envs=2)
+    config = env.config
+    config['placements_extents'] = [-2.0, -2.0, 2.0, 2.0]
+    config['lidar_max_dist'] = 8 * config['placements_extents'][3]
 
     if os.path.isfile(f'{base_model_path}/{name}.zip'):
         model = PPO2.load(f'{base_model_path}/{name}.zip', env=env)
