@@ -176,8 +176,6 @@ if __name__ == '__main__':
     repeat = 5
     train_length = 1_000_000
 
-    register_envs()
-
     if not os.path.isdir(base_model_path):
         os.makedirs(base_model_path, exist_ok=True)
 
