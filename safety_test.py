@@ -18,7 +18,7 @@ temp_path = os.environ['TMPDIR']
 
 
 def register_envs():
-    for env_id in ['PointGoal2.0-v1', 'CarGoal2.0-v1']:
+    for env_id in ['Safexp-PointGoal0-v0', 'Safexp-CarGoal0-v0']:
         env = gym.make(env_id)
         config = env.config
         config['placements_extents'] = [-2.0, -2.0, 2.0, 2.0]
