@@ -9,7 +9,7 @@
 
 #SBATCH -A laszka
 
-#SBATCH --array=1-2
+#SBATCH --array=1-5
 
 ##module load GCC/7.2.0-2.29
 ##module load Anaconda3/python-3.6
