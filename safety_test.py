@@ -10,10 +10,22 @@ from stable_baselines.common import make_vec_env
 from stable_baselines.common.policies import MlpPolicy
 from stable_baselines.ppo2 import PPO2
 import tensorflow as tf
+from gym.envs.registration import register
 from tqdm import tqdm
 import numpy as np
 
 temp_path = os.environ['TMPDIR']
+
+
+def register_envs():
+    for env_id in ['PointGoal2.0-v1', 'CarGoal2.0-v1']:
+        env = gym.make(env_id)
+        config = env.config
+        config['placements_extents'] = [-2.0, -2.0, 2.0, 2.0]
+        config['lidar_max_dist'] = 8 * config['placements_extents'][3]
+        register(id=env_id,
+                 entry_point='safety_gym.envs.mujoco:Engine',
+                 kwargs={'config': config})
 
 
 def get_policy_class(policy_params):
@@ -171,6 +183,8 @@ if __name__ == '__main__':
     base_model_path = 'lee-models'
     repeat = 5
     train_length = 1_000_000
+
+    register_envs()
 
     if not os.path.isdir(base_model_path):
         os.makedirs(base_model_path, exist_ok=True)
