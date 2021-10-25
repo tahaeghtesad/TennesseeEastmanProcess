@@ -22,7 +22,7 @@ class SafetyEnvAttacker(gym.Env):
         self.defender_obs = np.zeros((4,))
 
     def step(self, action: np.ndarray) -> Tuple[Any, float, bool, Dict]:
-        self.adversarial_control_env.set_attacker(ConstantAgent(action))
+        self.adversarial_control_env.set_attacker(ConstantAgent('constant', action))
         (obs, _), (reward, _), done, info = self.adversarial_control_env.step()
 
         return obs, reward, done, info
@@ -44,7 +44,7 @@ class SafetyEnvDefender(gym.Env):
         self.observation_space = self.adversarial_control_env.env.observation_space
 
     def step(self, action: np.ndarray) -> Tuple[Any, float, bool, Dict]:
-        self.adversarial_control_env.set_defender(ConstantAgent(action))
+        self.adversarial_control_env.set_defender(ConstantAgent('constant', action))
         (_, obs), (_, reward), done, info = self.adversarial_control_env.step()
 
         return obs, reward, done, info
