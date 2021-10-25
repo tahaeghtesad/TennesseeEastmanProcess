@@ -132,7 +132,7 @@ def callback(locals_, globals_):
 
 
 def eval_agents(env, attacker, defender):
-    epochs = 100
+    epochs = 25
     print(f'Evaluating {attacker} vs. {defender} in environment {env} for {epochs} epoch(s).')
     env = SafetyThreatModel(env, attacker, defender)
 
@@ -140,7 +140,7 @@ def eval_agents(env, attacker, defender):
     attacker_rewards = []
     lengths = []
 
-    for epoch in tqdm(range(epochs)):
+    for epoch in range(epochs):
         done = False
         _ = env.reset()
         adversary_episode_reward = 0
@@ -156,10 +156,10 @@ def eval_agents(env, attacker, defender):
         lengths.append(step)
 
     print(f'Average episode length: {sum(lengths)/len(lengths)}')
-    print(f'Average episode reward for adversary: {sum(attacker_rewards)/len(attacker_rewards)}')
+    print(f'Average episode reward for adversary: {sum(attacker_rewards) / len(attacker_rewards)}')
     print(f'Average episode reward for defender: {sum(defender_rewards) / len(defender_rewards)}')
-    print(f'Average step reward for adversary: {sum(attacker_rewards) / len(attacker_rewards) / sum(lengths)}')
-    print(f'Average step reward for defender: {sum(defender_rewards) / len(defender_rewards) / sum(lengths)}')
+    print(f'Average step reward for adversary: {sum(attacker_rewards) / sum(lengths)}')
+    print(f'Average step reward for defender: {sum(defender_rewards) / sum(lengths)}')
 
     return sum(attacker_rewards)/len(attacker_rewards), sum(defender_rewards)/len(defender_rewards)
 
