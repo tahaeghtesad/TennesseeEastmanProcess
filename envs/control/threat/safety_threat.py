@@ -1,6 +1,7 @@
 from agents.RLAgents import Agent
 from envs.control.threat.threat import ThreatModel
 import numpy as np
+from safety_gym.envs.engine import Engine
 
 
 class SafetyThreatModel(ThreatModel):
@@ -14,6 +15,7 @@ class SafetyThreatModel(ThreatModel):
         config = self.env.config
         config['placements_extents'] = [-2.0, -2.0, 2.0, 2.0]
         config['lidar_max_dist'] = 8 * config['placements_extents'][3]
+        self.env = Engine(config)
 
     def reset(self):
         super().reset()
@@ -44,4 +46,4 @@ class SafetyThreatModel(ThreatModel):
 
         # obs, reward, done, info
         return (np.hstack((defender_action, self.env.obs_lidar([self.adversarial_goal], 0))), self.last_env_observation),\
-               (adversary_reward * 1e-2, env_reward), done, info
+               (adversary_reward, env_reward), done, info

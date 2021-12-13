@@ -3,17 +3,15 @@ import os
 import sys
 
 import gym
-import safety_gym
+import tensorflow as tf
+
 from agents.RLAgents import ZeroAgent, SimpleWrapperAgent
 from envs.control.envs.safety import SafetyEnvAttacker, SafetyEnvDefender
 from envs.control.threat.safety_threat import SafetyThreatModel
+from safety_gym.envs.engine import Engine
 from stable_baselines.common.policies import MlpPolicy
 from stable_baselines.common.vec_env import DummyVecEnv
 from stable_baselines.ppo2 import PPO2
-import tensorflow as tf
-from gym.wrappers import Monitor
-from tqdm import tqdm
-import numpy as np
 
 temp_path = os.environ['TMPDIR']
 
@@ -56,6 +54,7 @@ def make_vec_env(env_id, n_envs=1, seed=None, start_index=0,
                 config = env.config
                 config['placements_extents'] = [-2.0, -2.0, 2.0, 2.0]
                 config['lidar_max_dist'] = 8 * config['placements_extents'][3]
+                env = Engine(config)
 
             if seed is not None:
                 env.seed(seed + rank)
@@ -231,7 +230,7 @@ if __name__ == '__main__':
     env_name = f'Safexp-{robot}Goal0-v0'
     base_model_path = 'lee-models'
     repeat = 5
-    train_length = 1_000_000
+    train_length = 300_000
 
     if not os.path.isdir(base_model_path):
         os.makedirs(base_model_path, exist_ok=True)
