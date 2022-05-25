@@ -16,15 +16,13 @@ class ThreeTank(ControlEnv):
         self.logger = logging.getLogger(__class__.__name__)
         self.x = np.array([0., 0., 0.])
 
-        self.action_space = gym.spaces.Box(low=np.array([0.0, 0.0]), high=np.array([1.5e-4, 1.5e-4]))
+        self.action_space = gym.spaces.Box(low=np.array([0.0, 0.0]), high=np.array([1.5, 1.5]))
         self.observation_space = gym.spaces.Box(low=-np.array([0, 0]), high=np.array([1., 1.]))
 
         self.tank_size = gym.spaces.Box(low=np.array([0., 0., 0]), high=np.array([.62, .62, .62]))
 
         self.episode_count = 0
         self.step_count = 0
-
-        self.highest_reward = -np.inf
 
         self.goal = np.array([.4, .2, .3])
 
@@ -41,6 +39,8 @@ class ThreeTank(ControlEnv):
 
     def step(self, action: np.ndarray) -> Tuple[Any, float, bool, Dict]:  # Obs, Reward, Done, Info
         self.step_count += 1
+
+        action *= 1e-4
 
         u = action * (1. + np.random.normal(loc=np.zeros(self.action_dim,), scale=np.repeat(self.noise_sigma, self.action_dim)))
 
@@ -71,7 +71,6 @@ class ThreeTank(ControlEnv):
         }
 
     def reset(self) -> Any:
-        self.highest_reward = -np.inf
 
         self.episode_count += 1
         self.step_count = 0
@@ -109,7 +108,7 @@ class ThreeTankAttacker(gym.Env):
             high=power * np.array([1.] * (self.adversarial_control_env.env.action_dim + self.adversarial_control_env.env.observation_dim)))
 
     def step(self, action: np.ndarray) -> Tuple[Any, float, bool, Dict]:
-        self.adversarial_control_env.set_attacker(ConstantAgent(action))
+        self.adversarial_control_env.set_attacker(ConstantAgent('constant', action))
         (obs, _), (reward, _), done, info = self.adversarial_control_env.step()
 
         return obs, reward, done, info
@@ -144,7 +143,7 @@ class ThreeTankDefender(gym.Env):
                                            high=self.adversarial_control_env.env.action_space.high)
 
     def step(self, action: np.ndarray) -> Tuple[Any, float, bool, Dict]:
-        self.adversarial_control_env.set_defender(ConstantAgent(action))
+        self.adversarial_control_env.set_defender(ConstantAgent('Constant', action))
         (_, obs), (_, reward), done, info = self.adversarial_control_env.step()
 
         return obs, reward, done, info

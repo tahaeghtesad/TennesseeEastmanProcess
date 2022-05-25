@@ -1,17 +1,13 @@
 import multiprocessing as mp
-import threading
 from time import time
 
-import gym
 from stable_baselines import DDPG
 
-import envs
 import json
 import csv
-from tqdm import tqdm
 
-from agents.RLAgents import LimitedHistoryAgent, HistoryAgent, SimpleWrapperAgent, ZeroAgent
-from envs.control.adversarial_control import AdversarialControlEnv
+from agents.RLAgents import SimpleWrapperAgent, ZeroAgent
+from envs.control.threat.adversarial_control import TEPThreatModel
 
 
 class Analyzer:
@@ -23,7 +19,7 @@ class Analyzer:
             self.params = json.load(param_file)
 
     def payoff(self, attacker, defender, repeat=50):
-        env = AdversarialControlEnv('BRP-v0', attacker, defender, **self.params['env_params'])
+        env = TEPThreatModel('BRP-v0', attacker, defender, **self.params['env_params'])
 
         ra = 0
         rd = 0

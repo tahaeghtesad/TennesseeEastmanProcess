@@ -1,20 +1,18 @@
-import copy
 import csv
 import json
 import multiprocessing
 from time import time
 
-import gym
-import gym.envs
 import matplotlib.pyplot as plt
 import numpy as np
-from stable_baselines import DDPG
-from tqdm import tqdm
 
-from agents.RLAgents import MixedStrategyAgent, HistoryAgent, SimpleWrapperAgent, ConstantAgent, ZeroAgent
-from envs.control.adversarial_control import AdversarialControlEnv
-from trainer import RCTrainer
+from agents.HeuristicAgents import PIDController
+from envs.control.threat.tep_threat import TEPThreatModel
+from stable_baselines import DDPG
+
+from agents.RLAgents import SimpleWrapperAgent, ZeroAgent
 from util.nash_helpers import find_zero_sum_mixed_ne_gambit
+
 
 # no_attack_x = [[], [], []]
 # no_defense_x = [[], [], []]
@@ -33,6 +31,7 @@ def extract_info(prefix):
         writer.writerow(['step',
                          'no_attack_state_0',
                          'no_attack_state_1',
+                         'no_attack_state_2'
                          'no_attack_attacker_action_a_0',
                          'no_attack_attacker_action_a_1',
                          'no_attack_attacker_action_o_0',
@@ -43,6 +42,7 @@ def extract_info(prefix):
                          # 'no_attack_2',
                          'no_defense_state_0',
                          'no_defense_state_1',
+                         'no_defense_state_2',
                          'no_defense_attacker_action_a_0',
                          'no_defense_attacker_action_a_1',
                          'no_defense_attacker_action_o_0',
@@ -53,6 +53,7 @@ def extract_info(prefix):
                          # 'no_defense_2',
                          'defense_state_0',
                          'defense_state_1',
+                         'defense_state_2',
                          'defense_attacker_action_a_0',
                          'defense_attacker_action_a_1',
                          'defense_attacker_action_o_0',
@@ -60,7 +61,17 @@ def extract_info(prefix):
                          'defense_defender_action_0',
                          'defense_defender_action_1',
                          'defense_reward'
-                         # 'defense_2'
+                         # 'defense_2',
+                         'pid_state_0'
+                         'pid_state_1',
+                         'pid_state_2',
+                         'pid_attacker_action_a_0',
+                         'pid_attacker_action_a_1',
+                         'pid_attacker_action_o_0',
+                         'pid_attacker_action_o_1',
+                         'pid_defender_action_0',
+                         'pid_defender_action_1',
+                         'pid_reward'
                          ])
 
         attacker_payoff = np.load(f'{prefix}/attacker_payoff.npy')
@@ -68,7 +79,7 @@ def extract_info(prefix):
         sa, sd = find_zero_sum_mixed_ne_gambit(attacker_payoff, defender_payoff)
         # print(f'sa = {sa} / sd = {sd}')
 
-        no_op_attacker = ZeroAgent(4)
+        no_op_attacker = ZeroAgent('Zero', 4)
         # compromise = np.zeros(4)
         compromise = np.concatenate(
             (np.random.rand(2) < params['env_params']['compromise_observation_prob'],
@@ -77,33 +88,46 @@ def extract_info(prefix):
 
         np.save(f'./compares/{prefix.split("/")[-1]}', compromise)
 
-        defender_0 = SimpleWrapperAgent(DDPG.load(f'{prefix}/params/defender-0.zip', verbose=0))
-        attacker_msne = SimpleWrapperAgent(DDPG.load(f'{prefix}/params/attacker-{np.argmax(sa)}.zip', verbose=0)) if np.argmax(sa) != 0 else no_op_attacker
+        defender_0 = SimpleWrapperAgent('Defender_0', DDPG.load(f'{prefix}/params/defender-0.zip', verbose=0))
+        attacker_msne = SimpleWrapperAgent('attacker_msne', DDPG.load(f'{prefix}/params/attacker-{np.argmax(sa)}.zip',
+                                                                      verbose=0)) if np.argmax(
+            sa) != 0 else no_op_attacker
 
-        no_attack_env = AdversarialControlEnv(f'{params["env_id"]}-v0',
-                                              no_op_attacker,
-                                              defender_0,
-                                              **params['env_params'],
-                                              test_env=True)
-        no_defense_env = AdversarialControlEnv(f'{params["env_id"]}-v0',
-                                               attacker_msne,
-                                               defender_0,
-                                               **params['env_params'],
-                                               test_env=True)
-        defense_env = AdversarialControlEnv(f'{params["env_id"]}-v0',
-                                            attacker_msne,
-                                            SimpleWrapperAgent(DDPG.load(f'{prefix}/params/defender-{np.argmax(sd)}.zip', verbose=0)),
-                                            **params['env_params'],
-                                            test_env=True)
+        no_attack_env = TEPThreatModel(f'{params["env_id"]}-v0',
+                                       no_op_attacker,
+                                       defender_0,
+                                       **params['env_params'],
+                                       test_env=True)
+        no_defense_env = TEPThreatModel(f'{params["env_id"]}-v0',
+                                        attacker_msne,
+                                        defender_0,
+                                        **params['env_params'],
+                                        test_env=True)
+        defense_env = TEPThreatModel(f'{params["env_id"]}-v0',
+                                     attacker_msne,
+                                     SimpleWrapperAgent('defender',
+                                                        DDPG.load(f'{prefix}/params/defender-{np.argmax(sd)}.zip',
+                                                                  verbose=0)),
+                                     **params['env_params'],
+                                     test_env=True)
+
+        pid_env = TEPThreatModel(f'{params["env_id"]}-v0',
+                                 no_op_attacker,
+                                 PIDController(85.5795626000449, 16.334363381260744, 0.001,
+                                               no_attack_env.env.action_space, no_attack_env.env.goal, 'PID'),
+                                 **params['env_params'],
+                                 test_env=True)
 
         no_attack_env.reset(compromise)
         no_defense_env.reset(compromise)
         defense_env.reset(compromise)
+        pid_env.reset(compromise)
 
         for i in range(100):
             (_, no_attack_obs), (no_attack_reward, _), no_attack_done, no_attack_info = no_attack_env.step()
             (_, no_defense_obs), (no_defense_reward, _), no_defense_done, no_defense_info = no_defense_env.step()
             (_, defense_obs), (defense_reward, _), defense_done, defense_info = defense_env.step()
+            (_, pid_obs), (pid_reward, _), pid_done, pid_info = pid_env.step()
 
             # if i > -1:
             # if random.random() < .4:
@@ -111,6 +135,7 @@ def extract_info(prefix):
                 i,
                 no_attack_info['x'][0],
                 no_attack_info['x'][1],
+                no_attack_info['x'][2],
                 no_attack_info['a'][0],
                 no_attack_info['a'][1],
                 no_attack_info['o'][0],
@@ -123,6 +148,7 @@ def extract_info(prefix):
 
                 no_defense_info['x'][0],
                 no_defense_info['x'][1],
+                no_defense_info['x'][2],
                 no_defense_info['a'][0],
                 no_defense_info['a'][1],
                 no_defense_info['o'][0],
@@ -134,14 +160,26 @@ def extract_info(prefix):
 
                 defense_info['x'][0],
                 defense_info['x'][1],
+                defense_info['x'][2],
                 defense_info['a'][0],
                 defense_info['a'][1],
                 defense_info['o'][0],
                 defense_info['o'][1],
                 defense_info['d'][0],
                 defense_info['d'][1],
-                -defense_reward
+                -defense_reward,
                 # defense_info['x'][2],
+
+                pid_info['x'][0],
+                pid_info['x'][1],
+                pid_info['x'][2],
+                pid_info['a'][0],
+                pid_info['a'][1],
+                pid_info['o'][0],
+                pid_info['o'][1],
+                pid_info['d'][0],
+                pid_info['d'][1],
+                -pid_reward,
             ])
     plot(prefix.split('/')[-1])
     print(f'Done with {prefix}, took {time() - start:.3f}(s)')
@@ -149,7 +187,6 @@ def extract_info(prefix):
 
 
 def plot(index):
-
     compromise = np.load(f'compares/{index}.npy')
     print(compromise)
 
@@ -173,7 +210,7 @@ def plot(index):
                     if i == 0:
                         # [0.99510292, 1.5122427]
                         axs[i, 0].plot([0.99510292 for i in range(total_steps)], label='desired')
-                        axs[i, 1].plot([1.5122427  for i in range(total_steps)], label='desired')
+                        axs[i, 1].plot([1.5122427 for i in range(total_steps)], label='desired')
 
         fig.suptitle(f'Compromise: {compromise}', fontsize=16)
         plt.legend()
@@ -189,7 +226,6 @@ def plot(index):
     # 'no_attack_defender_action_0',
     # 'no_attack_defender_action_1',
     # 'no_attack_reward',
-
 
     #     for i in range(2):
     #         no_attack_x[i].append(no_attack_info['x'][i])

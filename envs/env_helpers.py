@@ -46,3 +46,39 @@ class LimitedHistoritized(Historitized):
         initial_obs = self.env.reset()
         self.history = [initial_obs] * self.history_size
         return np.array(self.history)[self.select].flatten()
+
+
+class PIDHelper(gym.Env):
+    def __init__(self, env, **kwargs) -> None:
+        self.env = gym.make(env, **kwargs)
+        self.action_space = self.env.action_space
+
+        self.observation_space = gym.spaces.Box(low=-np.ones(self.env.observation_dim * 3),
+                                                high=np.ones(self.env.observation_dim * 3))
+
+        self.goal = self.env.goal[:self.env.observation_dim]
+
+        self.i = 0.0
+        self.d = 0.0
+
+        self.prev_e = 0.0
+
+    def reset(self):
+        self.i = 0
+        self.d = 0
+
+        self.prev_e = 0.0
+
+        return np.zeros(self.env.observation_dim * 3)
+
+    def step(self, action):
+        obs, reward, done, info = self.env.step(action)
+
+        error = self.goal - obs
+
+        self.i += error
+        self.d = error - self.prev_e
+        self.prev_e = error
+
+        return np.concatenate((error, self.i, self.d)).flatten(), reward, done, info
+

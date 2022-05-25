@@ -1,11 +1,9 @@
 import logging
-from typing import Tuple, Any
+from typing import Any
 
 import numpy as np
-import gym
 
 from agents.RLAgents import Agent
-from envs.control.control_env import ControlEnv
 from envs.control.threat.threat import ThreatModel
 
 

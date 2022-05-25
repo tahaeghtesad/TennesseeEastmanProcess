@@ -146,7 +146,7 @@ class BioReactorDefender(gym.Env):
                                            high=self.adversarial_control_env.env.action_space.high)
 
     def step(self, action: np.ndarray) -> Tuple[Any, float, bool, Dict]:
-        self.adversarial_control_env.set_defender(ConstantAgent(action))
+        self.adversarial_control_env.set_defender(ConstantAgent('Constant', action))
         (_, obs), (_, reward), done, info = self.adversarial_control_env.step()
 
         return obs, reward, done, info
